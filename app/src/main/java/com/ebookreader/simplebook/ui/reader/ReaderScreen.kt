@@ -13,18 +13,23 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -46,6 +51,10 @@ fun ReaderScreen(
     val isToolbarVisible by viewModel.isToolbarVisible.collectAsState()
     val scrollPercentage by viewModel.scrollPercentage.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val tocEntries by viewModel.tocEntries.collectAsState()
+
+    var isTocVisible by remember { mutableStateOf(false) }
+    val tocSheetState = rememberModalBottomSheetState()
 
     Box(modifier = modifier.fillMaxSize()) {
         if (isLoading) {
@@ -87,6 +96,11 @@ fun ReaderScreen(
                         navigationIcon = {
                             IconButton(onClick = { navController?.navigateUp() }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = { isTocVisible = true }) {
+                                Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Table of Contents")
                             }
                         },
                         modifier = Modifier.statusBarsPadding()
@@ -145,6 +159,24 @@ fun ReaderScreen(
                         indication = null
                     ) { viewModel.toggleToolbar() }
             )
+        }
+
+        // TOC Bottom Sheet
+        if (isTocVisible) {
+            ModalBottomSheet(
+                onDismissRequest = { isTocVisible = false },
+                sheetState = tocSheetState
+            ) {
+                TocPanel(
+                    entries = tocEntries,
+                    currentChapterIndex = currentChapterIndex,
+                    onChapterSelect = { index ->
+                        viewModel.goToChapter(index)
+                        isTocVisible = false
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }

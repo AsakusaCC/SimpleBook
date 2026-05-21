@@ -48,6 +48,9 @@ class ReaderViewModel @Inject constructor(
     private val _scrollPercentage = MutableStateFlow(0f)
     val scrollPercentage: StateFlow<Float> = _scrollPercentage.asStateFlow()
 
+    private val _tocEntries = MutableStateFlow<List<TocEntry>>(emptyList())
+    val tocEntries: StateFlow<List<TocEntry>> = _tocEntries.asStateFlow()
+
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -85,6 +88,7 @@ class ReaderViewModel @Inject constructor(
     private fun loadEpubChapters(book: Book) {
         val result = epubParser.parse(File(book.filePath))
         epubBookRef = result.epubBook
+        _tocEntries.value = result.tableOfContents.entries
         // Load all chapter content
         val chapters = mutableListOf<Chapter>()
         epubBookRef?.let { epubBook ->
@@ -106,6 +110,12 @@ class ReaderViewModel @Inject constructor(
     private fun loadTxtChapters(book: Book) {
         val result = txtParser.parse(File(book.filePath))
         _chapters.value = result.chapters
+        _tocEntries.value = result.chapters.map { chapter ->
+            TocEntry(
+                title = chapter.title,
+                chapterIndex = chapter.index
+            )
+        }
     }
 
     fun toggleToolbar() {
