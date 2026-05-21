@@ -11,6 +11,7 @@ import com.ebookreader.simplebook.domain.model.Chapter
 import com.ebookreader.simplebook.domain.model.ChapterType
 import com.ebookreader.simplebook.domain.model.TocEntry
 import com.ebookreader.simplebook.domain.service.BookService
+import com.ebookreader.simplebook.domain.service.BookmarkService
 import com.ebookreader.simplebook.domain.service.ReadingService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -27,6 +28,7 @@ class ReaderViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val bookService: BookService,
     private val readingService: ReadingService,
+    private val bookmarkService: BookmarkService,
     private val epubParser: EpubParser,
     private val txtParser: TxtParser
 ) : ViewModel() {
@@ -53,6 +55,9 @@ class ReaderViewModel @Inject constructor(
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isBookmarked = MutableStateFlow(false)
+    val isBookmarked: StateFlow<Boolean> = _isBookmarked.asStateFlow()
 
     // Keep epubBook reference for lazy chapter loading
     private var epubBookRef: nl.siegmann.epublib.domain.Book? = null
@@ -82,6 +87,9 @@ class ReaderViewModel @Inject constructor(
             }
 
             _isLoading.value = false
+
+            // Check bookmark status for current chapter
+            refreshBookmarkStatus()
         }
     }
 
@@ -127,6 +135,7 @@ class ReaderViewModel @Inject constructor(
             saveCurrentProgress()
             _currentChapterIndex.value = index
             _scrollPercentage.value = 0f
+            refreshBookmarkStatus()
         }
     }
 
@@ -136,6 +145,25 @@ class ReaderViewModel @Inject constructor(
     fun onScrollPercentageChanged(percentage: Float) {
         _scrollPercentage.value = percentage
         debounceSaveProgress()
+    }
+
+    private fun refreshBookmarkStatus() {
+        viewModelScope.launch {
+            _isBookmarked.value = bookmarkService.isBookmarked(bookId, _currentChapterIndex.value)
+        }
+    }
+
+    fun toggleBookmark() {
+        viewModelScope.launch {
+            if (_isBookmarked.value) {
+                bookmarkService.deleteBookmarkForPosition(bookId, _currentChapterIndex.value)
+                _isBookmarked.value = false
+            } else {
+                val chapterTitle = _chapters.value.getOrNull(_currentChapterIndex.value)?.title ?: ""
+                bookmarkService.addBookmark(bookId, _currentChapterIndex.value, 0, chapterTitle)
+                _isBookmarked.value = true
+            }
+        }
     }
 
     private fun debounceSaveProgress() {

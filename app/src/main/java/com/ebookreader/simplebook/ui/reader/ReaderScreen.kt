@@ -14,6 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -52,6 +54,7 @@ fun ReaderScreen(
     val scrollPercentage by viewModel.scrollPercentage.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val tocEntries by viewModel.tocEntries.collectAsState()
+    val isBookmarked by viewModel.isBookmarked.collectAsState()
 
     var isTocVisible by remember { mutableStateOf(false) }
     val tocSheetState = rememberModalBottomSheetState()
@@ -99,6 +102,12 @@ fun ReaderScreen(
                             }
                         },
                         actions = {
+                            IconButton(onClick = { viewModel.toggleBookmark() }) {
+                                Icon(
+                                    if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                    contentDescription = "Bookmark"
+                                )
+                            }
                             IconButton(onClick = { isTocVisible = true }) {
                                 Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Table of Contents")
                             }
