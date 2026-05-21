@@ -31,7 +31,10 @@ class MainActivity : ComponentActivity() {
                         windowSizeClass = windowSizeClass,
                         navController = navController
                     ) {
-                        SimpleBookNavHost(navController = navController)
+                        SimpleBookNavHost(
+                            navController = navController,
+                            windowSizeClass = windowSizeClass
+                        )
                     }
                 }
             }

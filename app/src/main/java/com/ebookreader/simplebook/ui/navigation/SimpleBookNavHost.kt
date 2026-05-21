@@ -7,15 +7,19 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.ebookreader.simplebook.domain.model.Book
 import com.ebookreader.simplebook.ui.booklist.BookListScreen
 import com.ebookreader.simplebook.ui.bookmark.BookmarkScreen
 import com.ebookreader.simplebook.ui.note.NoteScreen
 import com.ebookreader.simplebook.ui.reader.ReaderScreen
 import com.ebookreader.simplebook.ui.settings.SettingsScreen
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 
 @Composable
 fun SimpleBookNavHost(
     navController: NavHostController,
+    windowSizeClass: WindowSizeClass,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -24,7 +28,12 @@ fun SimpleBookNavHost(
         modifier = modifier
     ) {
         composable(Screen.BookList.route) {
-            BookListScreen()
+            BookListScreen(
+                windowWidthSizeClass = windowSizeClass.widthSizeClass,
+                onBookClick = { book: Book ->
+                    navController.navigate(Screen.Reader.createRoute(book.id))
+                }
+            )
         }
 
         composable(
