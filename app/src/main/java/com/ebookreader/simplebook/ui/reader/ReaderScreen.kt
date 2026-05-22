@@ -1,6 +1,7 @@
 package com.ebookreader.simplebook.ui.reader
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -42,11 +43,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.ebookreader.simplebook.domain.model.Chapter
 import com.ebookreader.simplebook.domain.model.ChapterType
+import com.ebookreader.simplebook.domain.model.ReaderSettings
 import com.ebookreader.simplebook.domain.model.TocEntry
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,6 +73,7 @@ fun ReaderScreen(
     val isBookmarked by viewModel.isBookmarked.collectAsState()
     val bookmarks by viewModel.bookmarks.collectAsState()
     val notes by viewModel.notes.collectAsState()
+    val settings by viewModel.settings.collectAsState()
 
     var isTocVisible by remember { mutableStateOf(false) }
     val tocSheetState = rememberModalBottomSheetState()
@@ -141,6 +147,7 @@ fun ReaderScreen(
             tocSheetState = tocSheetState,
             tocEntries = tocEntries,
             navController = navController,
+            settings = settings,
             onToggleToolbar = viewModel::toggleToolbar,
             onToggleBookmark = viewModel::toggleBookmark,
             onShowNoteDialog = { showNoteDialog = true },
@@ -173,6 +180,7 @@ private fun ReaderPane(
     tocSheetState: SheetState,
     tocEntries: List<TocEntry>,
     navController: NavController?,
+    settings: ReaderSettings,
     onToggleToolbar: () -> Unit,
     onToggleBookmark: () -> Unit,
     onShowNoteDialog: () -> Unit,
@@ -191,6 +199,11 @@ private fun ReaderPane(
             )
         } else {
             val currentChapter = chapters.getOrNull(currentChapterIndex)
+            val textStyle = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = settings.fontSize.sp,
+                lineHeight = settings.fontSize.sp * settings.lineHeight,
+                color = Color(settings.textColor)
+            )
 
             when (currentChapter?.type) {
                 ChapterType.EPUB_HTML -> {
@@ -198,14 +211,19 @@ private fun ReaderPane(
                         htmlContent = currentChapter.content,
                         onScrollPercentageChanged = onScrollPercentageChanged,
                         onChapterFinished = onNextChapter,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(settings.backgroundColor))
                     )
                 }
                 ChapterType.TXT_PLAIN -> {
                     TxtReaderView(
                         paragraphs = currentChapter.content.split("\n"),
+                        textStyle = textStyle,
                         onScrollPositionChanged = { /* position tracking */ },
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(settings.backgroundColor))
                     )
                 }
                 null -> {

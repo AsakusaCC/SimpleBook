@@ -3,6 +3,7 @@ package com.ebookreader.simplebook.ui.reader
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ebookreader.simplebook.data.local.SettingsDataStore
 import com.ebookreader.simplebook.data.parser.EpubParser
 import com.ebookreader.simplebook.data.parser.TxtParser
 import com.ebookreader.simplebook.domain.model.Book
@@ -11,6 +12,7 @@ import com.ebookreader.simplebook.domain.model.Bookmark
 import com.ebookreader.simplebook.domain.model.Chapter
 import com.ebookreader.simplebook.domain.model.ChapterType
 import com.ebookreader.simplebook.domain.model.Note
+import com.ebookreader.simplebook.domain.model.ReaderSettings
 import com.ebookreader.simplebook.domain.model.TocEntry
 import com.ebookreader.simplebook.domain.service.BookService
 import com.ebookreader.simplebook.domain.service.BookmarkService
@@ -20,8 +22,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
@@ -34,10 +38,14 @@ class ReaderViewModel @Inject constructor(
     private val bookmarkService: BookmarkService,
     private val noteService: NoteService,
     private val epubParser: EpubParser,
-    private val txtParser: TxtParser
+    private val txtParser: TxtParser,
+    private val settingsDataStore: SettingsDataStore
 ) : ViewModel() {
 
     private val bookId: Long = savedStateHandle["bookId"] ?: 0L
+
+    val settings: StateFlow<ReaderSettings> = settingsDataStore.settings
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderSettings())
 
     private val _book = MutableStateFlow<Book?>(null)
     val book: StateFlow<Book?> = _book.asStateFlow()
