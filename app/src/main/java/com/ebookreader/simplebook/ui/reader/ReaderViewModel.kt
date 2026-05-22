@@ -7,11 +7,14 @@ import com.ebookreader.simplebook.data.parser.EpubParser
 import com.ebookreader.simplebook.data.parser.TxtParser
 import com.ebookreader.simplebook.domain.model.Book
 import com.ebookreader.simplebook.domain.model.BookFormat
+import com.ebookreader.simplebook.domain.model.Bookmark
 import com.ebookreader.simplebook.domain.model.Chapter
 import com.ebookreader.simplebook.domain.model.ChapterType
+import com.ebookreader.simplebook.domain.model.Note
 import com.ebookreader.simplebook.domain.model.TocEntry
 import com.ebookreader.simplebook.domain.service.BookService
 import com.ebookreader.simplebook.domain.service.BookmarkService
+import com.ebookreader.simplebook.domain.service.NoteService
 import com.ebookreader.simplebook.domain.service.ReadingService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -29,6 +32,7 @@ class ReaderViewModel @Inject constructor(
     private val bookService: BookService,
     private val readingService: ReadingService,
     private val bookmarkService: BookmarkService,
+    private val noteService: NoteService,
     private val epubParser: EpubParser,
     private val txtParser: TxtParser
 ) : ViewModel() {
@@ -59,12 +63,36 @@ class ReaderViewModel @Inject constructor(
     private val _isBookmarked = MutableStateFlow(false)
     val isBookmarked: StateFlow<Boolean> = _isBookmarked.asStateFlow()
 
+    private val _bookmarks = MutableStateFlow<List<Bookmark>>(emptyList())
+    val bookmarks: StateFlow<List<Bookmark>> = _bookmarks.asStateFlow()
+
+    private val _notes = MutableStateFlow<List<Note>>(emptyList())
+    val notes: StateFlow<List<Note>> = _notes.asStateFlow()
+
     // Keep epubBook reference for lazy chapter loading
     private var epubBookRef: nl.siegmann.epublib.domain.Book? = null
     private var saveJob: Job? = null
 
     init {
         loadBook()
+        collectBookmarks()
+        collectNotes()
+    }
+
+    private fun collectBookmarks() {
+        viewModelScope.launch {
+            bookmarkService.getBookmarksForBook(bookId).collect { list ->
+                _bookmarks.value = list
+            }
+        }
+    }
+
+    private fun collectNotes() {
+        viewModelScope.launch {
+            noteService.getNotesForBook(bookId).collect { list ->
+                _notes.value = list
+            }
+        }
     }
 
     private fun loadBook() {
@@ -164,6 +192,26 @@ class ReaderViewModel @Inject constructor(
                 _isBookmarked.value = true
             }
         }
+    }
+
+    fun addNote(content: String) {
+        viewModelScope.launch {
+            noteService.addNote(
+                Note(
+                    bookId = bookId,
+                    chapterIndex = _currentChapterIndex.value,
+                    content = content
+                )
+            )
+        }
+    }
+
+    fun goToBookmark(bookmark: Bookmark) {
+        goToChapter(bookmark.chapterIndex)
+    }
+
+    fun goToNote(note: Note) {
+        goToChapter(note.chapterIndex)
     }
 
     private fun debounceSaveProgress() {

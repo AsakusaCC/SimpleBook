@@ -43,7 +43,10 @@ fun SimpleBookNavHost(
             )
         ) { backStackEntry ->
             val bookId = backStackEntry.arguments?.getLong("bookId") ?: 0L
-            ReaderScreen(bookId = bookId)
+            ReaderScreen(
+                bookId = bookId,
+                windowWidthSizeClass = windowSizeClass.widthSizeClass
+            )
         }
 
         composable(
