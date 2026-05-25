@@ -13,6 +13,8 @@ import com.ebookreader.simplebook.ui.bookmark.BookmarkScreen
 import com.ebookreader.simplebook.ui.note.NoteScreen
 import com.ebookreader.simplebook.ui.reader.ReaderScreen
 import com.ebookreader.simplebook.ui.settings.SettingsScreen
+import com.ebookreader.simplebook.ui.sync.SyncScreen
+import com.ebookreader.simplebook.ui.sync.SyncViewModel
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 
@@ -20,6 +22,8 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 fun SimpleBookNavHost(
     navController: NavHostController,
     windowSizeClass: WindowSizeClass,
+    syncViewModel: SyncViewModel? = null,
+    signInLauncher: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -32,6 +36,9 @@ fun SimpleBookNavHost(
                 windowWidthSizeClass = windowSizeClass.widthSizeClass,
                 onBookClick = { book: Book ->
                     navController.navigate(Screen.Reader.createRoute(book.id))
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
                 }
             )
         }
@@ -71,7 +78,14 @@ fun SimpleBookNavHost(
         }
 
         composable(Screen.Settings.route) {
-            SettingsScreen()
+            SettingsScreen(
+                navController = navController,
+                onSignInClick = signInLauncher
+            )
+        }
+
+        composable(Screen.Sync.route) {
+            SyncScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }

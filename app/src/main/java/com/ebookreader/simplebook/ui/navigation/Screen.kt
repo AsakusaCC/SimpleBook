@@ -12,4 +12,5 @@ sealed class Screen(val route: String) {
         fun createRoute(bookId: Long) = "notes/$bookId"
     }
     data object Settings : Screen("settings")
+    data object Sync : Screen("sync")
 }
