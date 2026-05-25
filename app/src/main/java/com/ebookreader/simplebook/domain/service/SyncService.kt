@@ -76,8 +76,9 @@ class SyncService @Inject constructor(
         val books = bookRepository.getAllBooksNow()
 
         for (book in books) {
-            val hasLocalChanges = book.lastSyncedAt == null ||
-                (book.syncVersion > 1 && book.lastSyncedAt != null)
+            // 简单策略：从未同步过（lastSyncedAt == null）或有本地修改的书都上传
+            // "有本地修改" = syncVersion > 1 表示数据被修改过
+            val hasLocalChanges = book.lastSyncedAt == null || book.syncVersion > 1
 
             if (!hasLocalChanges) continue
 
@@ -144,82 +145,8 @@ class SyncService @Inject constructor(
             val localBook = findLocalBook(folderName, metadata)
 
             if (localBook == null) {
-                // New book from remote - create a placeholder entry
-                // The actual file download will be handled separately by the UI
-                val newBook = Book(
-                    title = metadata.title,
-                    author = metadata.author,
-                    filePath = "", // Will be set when file is actually downloaded
-                    format = com.ebookreader.simplebook.domain.model.BookFormat.valueOf(metadata.format),
-                    fileSize = metadata.fileSize,
-                    syncVersion = metadata.syncVersion,
-                    lastSyncedAt = System.currentTimeMillis(),
-                    driveFileId = folderId
-                )
-                val newId = bookRepository.addBook(newBook)
-
-                // Apply remote progress
-                metadata.progress?.let { prog ->
-                    readingProgressRepository.saveProgress(
-                        ReadingProgress(
-                            bookId = newId,
-                            chapterIndex = prog.chapterIndex,
-                            charOffset = prog.charOffset,
-                            percentage = prog.percentage,
-                            updatedAt = prog.updatedAt,
-                            syncVersion = prog.syncVersion,
-                            lastSyncedAt = System.currentTimeMillis()
-                        )
-                    )
-                }
-
-                // Apply remote bookmarks
-                for (bm in metadata.bookmarks) {
-                    bookmarkRepository.addBookmark(
-                        Bookmark(
-                            bookId = newId,
-                            chapterIndex = bm.chapterIndex,
-                            charOffset = bm.charOffset,
-                            name = bm.name,
-                            createdAt = bm.createdAt,
-                            syncVersion = bm.syncVersion,
-                            lastSyncedAt = System.currentTimeMillis()
-                        )
-                    )
-                }
-
-                // Apply remote highlights
-                for (hl in metadata.highlights) {
-                    highlightRepository.addHighlight(
-                        Highlight(
-                            bookId = newId,
-                            chapterIndex = hl.chapterIndex,
-                            startOffset = hl.startOffset,
-                            endOffset = hl.endOffset,
-                            color = hl.color.toLong(),
-                            note = hl.note,
-                            createdAt = hl.createdAt,
-                            syncVersion = hl.syncVersion,
-                            lastSyncedAt = System.currentTimeMillis()
-                        )
-                    )
-                }
-
-                // Apply remote notes
-                for (nt in metadata.notes) {
-                    noteRepository.addNote(
-                        Note(
-                            bookId = newId,
-                            highlightId = nt.highlightId,
-                            chapterIndex = nt.chapterIndex,
-                            charOffset = nt.charOffset,
-                            content = nt.content,
-                            createdAt = nt.createdAt,
-                            syncVersion = nt.syncVersion,
-                            lastSyncedAt = System.currentTimeMillis()
-                        )
-                    )
-                }
+                // TODO: v1.1 完整实现远端新书下载（下载文件到本地、创建 Book 记录）
+                // 当前版本跳过远端独有的书籍
             } else {
                 // Local book exists - compare versions and detect conflicts
                 mergeLocalBook(localBook, metadata, folderId)

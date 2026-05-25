@@ -51,6 +51,23 @@ abstract class SimpleBookDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE highlights ADD COLUMN lastSyncedAt INTEGER")
                 db.execSQL("ALTER TABLE notes ADD COLUMN syncVersion INTEGER NOT NULL DEFAULT 1")
                 db.execSQL("ALTER TABLE notes ADD COLUMN lastSyncedAt INTEGER")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS conflict_records (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        bookId INTEGER NOT NULL,
+                        entityType TEXT NOT NULL,
+                        entityId INTEGER NOT NULL,
+                        localSyncVersion INTEGER NOT NULL,
+                        remoteSyncVersion INTEGER NOT NULL,
+                        localData TEXT NOT NULL,
+                        remoteData TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        resolvedAt INTEGER,
+                        FOREIGN KEY(bookId) REFERENCES books(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
             }
         }
     }

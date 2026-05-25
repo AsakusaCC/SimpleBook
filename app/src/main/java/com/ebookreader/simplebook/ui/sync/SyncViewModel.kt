@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ebookreader.simplebook.data.local.dao.ConflictDao
+import com.ebookreader.simplebook.data.local.entity.ConflictRecordEntity
 import com.ebookreader.simplebook.data.remote.AuthManager
 import com.ebookreader.simplebook.domain.service.SyncService
 import com.ebookreader.simplebook.domain.service.SyncStatus
@@ -26,6 +27,9 @@ class SyncViewModel @Inject constructor(
 
     val conflictCount: StateFlow<Int> = syncService.conflictCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val conflicts: StateFlow<List<ConflictRecordEntity>> = conflictDao.getUnresolvedConflicts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val isSignedIn: Boolean get() = authManager.isSignedIn
 
