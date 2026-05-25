@@ -28,6 +28,18 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun updateBackgroundColor(color: Long) {
-        viewModelScope.launch { settingsDataStore.updateBackgroundColor(color) }
+        viewModelScope.launch {
+            settingsDataStore.updateBackgroundColor(color)
+            // Auto-switch text color to match background brightness
+            val textColor = when (color) {
+                0xFF2B2B2BL, 0xFF000000L -> 0xFFFFFFFFL // Dark/Black → white text
+                else -> 0xFF000000L // White/Sepia → black text
+            }
+            settingsDataStore.updateTextColor(textColor)
+        }
+    }
+
+    fun updateLanguage(language: String) {
+        viewModelScope.launch { settingsDataStore.updateLanguage(language) }
     }
 }

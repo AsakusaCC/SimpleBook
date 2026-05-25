@@ -30,10 +30,11 @@ class FileImportService @Inject constructor(
 
         for (uri in uris) {
             try {
-                // Determine file extension
+                // Determine file extension and original name
                 val fileName = getFileName(uri)
                 val extension = fileName.substringAfterLast('.', "").lowercase()
                 if (extension !in SUPPORTED_EXTENSIONS) continue
+                val originalName = fileName.substringBeforeLast('.')
 
                 // Copy to app sandbox
                 val sandboxName = "${UUID.randomUUID()}.$extension"
@@ -44,8 +45,8 @@ class FileImportService @Inject constructor(
                     }
                 } ?: continue
 
-                // Import via BookService
-                val book = bookService.importBook(sandboxFile)
+                // Import via BookService with original name hint
+                val book = bookService.importBook(sandboxFile, originalName)
                 importedBooks.add(book)
             } catch (e: Exception) {
                 // Skip failed imports, continue with remaining

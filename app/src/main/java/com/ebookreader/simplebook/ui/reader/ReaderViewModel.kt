@@ -1,5 +1,7 @@
 package com.ebookreader.simplebook.ui.reader
 
+import android.util.Base64
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
+import java.net.URLDecoder
 import javax.inject.Inject
 
 @HiltViewModel
@@ -77,9 +80,12 @@ class ReaderViewModel @Inject constructor(
     private val _notes = MutableStateFlow<List<Note>>(emptyList())
     val notes: StateFlow<List<Note>> = _notes.asStateFlow()
 
-    // Keep epubBook reference for lazy chapter loading
     private var epubBookRef: nl.siegmann.epublib.domain.Book? = null
     private var saveJob: Job? = null
+
+    companion object {
+        private const val TAG = "ReaderViewModel"
+    }
 
     init {
         loadBook()
@@ -116,15 +122,12 @@ class ReaderViewModel @Inject constructor(
                 BookFormat.TXT -> loadTxtChapters(book)
             }
 
-            // Restore reading progress
             readingService.loadProgress(bookId)?.let { progress ->
                 _currentChapterIndex.value = progress.chapterIndex
                 _scrollPercentage.value = progress.percentage.toFloat()
             }
 
             _isLoading.value = false
-
-            // Check bookmark status for current chapter
             refreshBookmarkStatus()
         }
     }
@@ -132,23 +135,121 @@ class ReaderViewModel @Inject constructor(
     private fun loadEpubChapters(book: Book) {
         val result = epubParser.parse(File(book.filePath))
         epubBookRef = result.epubBook
-        _tocEntries.value = result.tableOfContents.entries
-        // Load all chapter content
+        Log.d(TAG, "EPUB parsed: title=${result.title}, spineCount=${result.chapterCount}")
+
+        // Collect all spine indices covered by the TOC (including children)
+        val tocCoveredIndices = mutableSetOf<Int>()
+        fun collectTocIndices(entries: List<TocEntry>) {
+            for (entry in entries) {
+                if (entry.chapterIndex >= 0) tocCoveredIndices.add(entry.chapterIndex)
+                collectTocIndices(entry.children)
+            }
+        }
+        collectTocIndices(result.tableOfContents.entries)
+
         val chapters = mutableListOf<Chapter>()
+        // Track cover/missing entries to prepend to TOC
+        val missingTocEntries = mutableListOf<TocEntry>()
         epubBookRef?.let { epubBook ->
             for (i in 0 until result.chapterCount) {
-                val content = epubParser.getChapterContent(epubBook, i) ?: continue
-                val title = result.tableOfContents.entries
-                    .findTocTitleForChapter(i) ?: "Chapter ${i + 1}"
+                val spineRef = epubBook.spine.spineReferences[i]
+                val rawContent = String(spineRef.resource.data, Charsets.UTF_8)
+                val href = spineRef.resource.href ?: ""
+                val content = resolveImageReferences(rawContent, epubBook, href)
+
+                val chapterIndex = chapters.size
+                val tocTitle = result.tableOfContents.entries.findTocTitleForChapter(i)
+                val htmlTitle = extractHtmlTitle(rawContent)
+                val title = tocTitle ?: htmlTitle ?: "Chapter ${chapterIndex + 1}"
+                Log.d(TAG, "Chapter $chapterIndex (spine $i): title=$title, contentLength=${content.length}")
                 chapters.add(Chapter(
-                    index = i,
+                    index = chapterIndex,
                     title = title,
                     content = content,
                     type = ChapterType.EPUB_HTML
                 ))
+                // Track chapters not in original TOC (e.g. cover page)
+                if (i !in tocCoveredIndices) {
+                    missingTocEntries.add(TocEntry(title = title, chapterIndex = chapterIndex))
+                }
             }
         }
+        // Keep original TOC hierarchy intact, prepend missing entries (like cover)
+        _tocEntries.value = missingTocEntries + result.tableOfContents.entries
+        Log.d(TAG, "Total chapters: ${chapters.size}, TOC entries: ${_tocEntries.value.size}")
         _chapters.value = chapters
+    }
+
+    private fun extractHtmlTitle(html: String): String? {
+        val regex = Regex("<title[^>]*>(.*?)</title>", RegexOption.IGNORE_CASE)
+        return regex.find(html)?.groupValues?.get(1)?.trim()?.ifBlank { null }
+    }
+
+    /** Resolve image references in EPUB HTML to base64 data URIs so WebView can render them. */
+    private fun resolveImageReferences(
+        html: String,
+        epubBook: nl.siegmann.epublib.domain.Book,
+        resourceHref: String
+    ): String {
+        val basePath = resourceHref.substringBeforeLast('/', "")
+        var result = html
+
+        // Resolve <img src="...">
+        val imgRegex = Regex("""(<img\s[^>]*?src\s*=\s*["'])([^"']+)(["'])""", RegexOption.IGNORE_CASE)
+        result = imgRegex.replace(result) { match ->
+            val dataUri = resolveToDataUri(match.groupValues[2], basePath, epubBook)
+            if (dataUri != null) "${match.groupValues[1]}$dataUri${match.groupValues[3]}" else match.value
+        }
+
+        // Resolve <image xlink:href="..."> in SVG
+        val svgImageRegex = Regex("""(<image\s[^>]*?xlink:href\s*=\s*["'])([^"']+)(["'])""", RegexOption.IGNORE_CASE)
+        result = svgImageRegex.replace(result) { match ->
+            val dataUri = resolveToDataUri(match.groupValues[2], basePath, epubBook)
+            if (dataUri != null) "${match.groupValues[1]}$dataUri${match.groupValues[3]}" else match.value
+        }
+
+        return result
+    }
+
+    private fun resolveToDataUri(
+        src: String,
+        basePath: String,
+        epubBook: nl.siegmann.epublib.domain.Book
+    ): String? {
+        if (src.startsWith("data:") || src.startsWith("http:") || src.startsWith("https:") || src.startsWith("file:")) return null
+
+        val resolvedPath = normalizePath(if (basePath.isNotEmpty()) "$basePath/$src" else src)
+
+        val resource = try {
+            epubBook.resources.getByHref(resolvedPath)
+                ?: epubBook.resources.getByHref(URLDecoder.decode(resolvedPath, "UTF-8"))
+        } catch (_: Exception) { null } ?: return null
+
+        if (resource.data == null || resource.data.isEmpty()) return null
+
+        val mimeType = resource.mediaType?.name ?: guessMimeType(src)
+        val base64 = Base64.encodeToString(resource.data, Base64.NO_WRAP)
+        return "data:$mimeType;base64,$base64"
+    }
+
+    private fun normalizePath(path: String): String {
+        val parts = path.split("/").toMutableList()
+        val result = mutableListOf<String>()
+        for (part in parts) {
+            when {
+                part == ".." -> if (result.isNotEmpty()) result.removeAt(result.lastIndex)
+                part != "." && part.isNotEmpty() -> result.add(part)
+            }
+        }
+        return result.joinToString("/")
+    }
+
+    private fun guessMimeType(path: String): String = when {
+        path.endsWith(".png", ignoreCase = true) -> "image/png"
+        path.endsWith(".gif", ignoreCase = true) -> "image/gif"
+        path.endsWith(".svg", ignoreCase = true) -> "image/svg+xml"
+        path.endsWith(".webp", ignoreCase = true) -> "image/webp"
+        else -> "image/jpeg"
     }
 
     private fun loadTxtChapters(book: Book) {
@@ -243,13 +344,10 @@ class ReaderViewModel @Inject constructor(
 
     override fun onCleared() {
         saveJob?.cancel()
-        // Synchronous save is not possible in coroutine scope,
-        // but we already saved on chapter change and debounced
         super.onCleared()
     }
 }
 
-// Helper to find TOC title for a spine index
 private fun List<TocEntry>.findTocTitleForChapter(chapterIndex: Int): String? {
     for (entry in this) {
         if (entry.chapterIndex == chapterIndex) return entry.title

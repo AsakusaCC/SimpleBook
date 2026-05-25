@@ -18,6 +18,7 @@ fun AdaptiveBookGrid(
     windowWidthSizeClass: WindowWidthSizeClass,
     onBookClick: (Book) -> Unit,
     onBookLongClick: (Book) -> Unit,
+    unknownAuthorText: String = "未知",
     modifier: Modifier = Modifier
 ) {
     val columns = when (windowWidthSizeClass) {
@@ -37,7 +38,8 @@ fun AdaptiveBookGrid(
             BookCard(
                 book = book,
                 onClick = { onBookClick(book) },
-                onLongClick = { onBookLongClick(book) }
+                onLongClick = { onBookLongClick(book) },
+                unknownAuthorText = unknownAuthorText
             )
         }
     }

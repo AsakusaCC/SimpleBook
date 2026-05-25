@@ -1,9 +1,6 @@
 package com.ebookreader.simplebook.ui.reader
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,8 +8,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -51,8 +49,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.ebookreader.simplebook.domain.model.Chapter
 import com.ebookreader.simplebook.domain.model.ChapterType
+import com.ebookreader.simplebook.domain.model.AppStrings
 import com.ebookreader.simplebook.domain.model.ReaderSettings
 import com.ebookreader.simplebook.domain.model.TocEntry
+import com.ebookreader.simplebook.domain.model.getStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,23 +74,25 @@ fun ReaderScreen(
     val bookmarks by viewModel.bookmarks.collectAsState()
     val notes by viewModel.notes.collectAsState()
     val settings by viewModel.settings.collectAsState()
+    val strings = remember(settings.language) { getStrings(settings.language) }
 
     var isTocVisible by remember { mutableStateOf(false) }
     val tocSheetState = rememberModalBottomSheetState()
     var showNoteDialog by remember { mutableStateOf(false) }
     var noteText by remember { mutableStateOf("") }
+    var isSidePanelVisible by remember { mutableStateOf(false) }
 
     val isExpanded = windowWidthSizeClass == WindowWidthSizeClass.Expanded
 
     if (showNoteDialog) {
         AlertDialog(
             onDismissRequest = { showNoteDialog = false; noteText = "" },
-            title = { Text("Add Note") },
+            title = { Text(strings.addNote) },
             text = {
                 OutlinedTextField(
                     value = noteText,
                     onValueChange = { noteText = it },
-                    label = { Text("Note content") },
+                    label = { Text(strings.noteContent) },
                     modifier = Modifier.fillMaxWidth()
                 )
             },
@@ -104,20 +106,19 @@ fun ReaderScreen(
                         noteText = ""
                     }
                 ) {
-                    Text("Save")
+                    Text(strings.save)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showNoteDialog = false; noteText = "" }) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
             }
         )
     }
 
     Row(modifier = modifier.fillMaxSize()) {
-        // Side panel for Expanded screens
-        if (isExpanded) {
+        if (isExpanded && isSidePanelVisible) {
             ReaderSidePanel(
                 tocEntries = tocEntries,
                 bookmarks = bookmarks,
@@ -132,8 +133,6 @@ fun ReaderScreen(
             )
         }
 
-        // Reader content area - extracted to separate composable to avoid
-        // RowScope.AnimatedVisibility shadowing the generic AnimatedVisibility
         ReaderPane(
             isLoading = isLoading,
             chapters = chapters,
@@ -142,13 +141,16 @@ fun ReaderScreen(
             scrollPercentage = scrollPercentage,
             bookTitle = book?.title ?: "",
             isBookmarked = isBookmarked,
-            isExpanded = isExpanded,
             isTocVisible = isTocVisible,
             tocSheetState = tocSheetState,
             tocEntries = tocEntries,
             navController = navController,
             settings = settings,
+            strings = strings,
+            isExpanded = isExpanded,
+            isSidePanelVisible = isSidePanelVisible,
             onToggleToolbar = viewModel::toggleToolbar,
+            onToggleSidePanel = { isSidePanelVisible = !isSidePanelVisible },
             onToggleBookmark = viewModel::toggleBookmark,
             onShowNoteDialog = { showNoteDialog = true },
             onShowToc = { isTocVisible = true },
@@ -175,13 +177,16 @@ private fun ReaderPane(
     scrollPercentage: Float,
     bookTitle: String,
     isBookmarked: Boolean,
-    isExpanded: Boolean,
     isTocVisible: Boolean,
     tocSheetState: SheetState,
     tocEntries: List<TocEntry>,
     navController: NavController?,
     settings: ReaderSettings,
+    strings: AppStrings,
+    isExpanded: Boolean,
+    isSidePanelVisible: Boolean,
     onToggleToolbar: () -> Unit,
+    onToggleSidePanel: () -> Unit,
     onToggleBookmark: () -> Unit,
     onShowNoteDialog: () -> Unit,
     onShowToc: () -> Unit,
@@ -211,6 +216,14 @@ private fun ReaderPane(
                         htmlContent = currentChapter.content,
                         onScrollPercentageChanged = onScrollPercentageChanged,
                         onChapterFinished = onNextChapter,
+                        backgroundColor = settings.backgroundColor,
+                        textColor = settings.textColor,
+                        fontSize = settings.fontSize,
+                        lineHeight = settings.lineHeight,
+                        hasNextChapter = currentChapterIndex < chapters.size - 1,
+                        nextChapterText = strings.nextChapter,
+                        allReadText = strings.allChaptersRead,
+                        onTap = onToggleToolbar,
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color(settings.backgroundColor))
@@ -221,22 +234,30 @@ private fun ReaderPane(
                         paragraphs = currentChapter.content.split("\n"),
                         textStyle = textStyle,
                         onScrollPositionChanged = { /* position tracking */ },
+                        onTap = onToggleToolbar,
+                        hasNextChapter = currentChapterIndex < chapters.size - 1,
+                        onNextChapter = onNextChapter,
+                        nextChapterText = strings.nextChapter,
+                        endOfChapterTitle = strings.endOfChapter,
+                        continueQuestionText = strings.continueQuestion,
+                        continueBtnText = strings.continueBtn,
+                        stayBtnText = strings.stayBtn,
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color(settings.backgroundColor))
                     )
                 }
                 null -> {
-                    Text("No content", modifier = Modifier.align(Alignment.Center))
+                    Text(strings.noContent, modifier = Modifier.align(Alignment.Center))
                 }
             }
 
-            // Toolbar overlay - top
-            AnimatedVisibility(
-                visible = isToolbarVisible,
-                modifier = Modifier.align(Alignment.TopStart)
-            ) {
-                Column {
+            if (isToolbarVisible) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                ) {
                     TopAppBar(
                         title = { Text(bookTitle) },
                         navigationIcon = {
@@ -245,6 +266,14 @@ private fun ReaderPane(
                             }
                         },
                         actions = {
+                            if (isExpanded) {
+                                IconButton(onClick = onToggleSidePanel) {
+                                    Icon(
+                                        if (isSidePanelVisible) Icons.AutoMirrored.Filled.List else Icons.AutoMirrored.Filled.MenuBook,
+                                        contentDescription = "TOC"
+                                    )
+                                }
+                            }
                             IconButton(onClick = onToggleBookmark) {
                                 Icon(
                                     if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
@@ -252,25 +281,25 @@ private fun ReaderPane(
                                 )
                             }
                             IconButton(onClick = onShowNoteDialog) {
-                                Icon(Icons.Default.Edit, contentDescription = "Add Note")
+                                Icon(Icons.Default.Edit, contentDescription = strings.addNote)
                             }
                             if (!isExpanded) {
                                 IconButton(onClick = onShowToc) {
-                                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Table of Contents")
+                                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = "TOC")
                                 }
                             }
-                        },
-                        modifier = Modifier.statusBarsPadding()
+                        }
                     )
                 }
             }
 
-            // Toolbar overlay - bottom
-            AnimatedVisibility(
-                visible = isToolbarVisible,
-                modifier = Modifier.align(Alignment.BottomStart)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+            if (isToolbarVisible) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
                     Text(
                         text = currentChapter?.title ?: "",
                         style = MaterialTheme.typography.labelMedium,
@@ -300,25 +329,14 @@ private fun ReaderPane(
                         }
                     }
                     Text(
-                        text = "Chapter ${currentChapterIndex + 1} of ${chapters.size}",
+                        text = strings.chapterOf(currentChapterIndex + 1, chapters.size),
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }
-
-            // Click handler to toggle toolbar (center tap)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { onToggleToolbar() }
-            )
         }
 
-        // TOC Bottom Sheet (only for Compact/Medium)
         if (!isExpanded && isTocVisible) {
             ModalBottomSheet(
                 onDismissRequest = onDismissToc,

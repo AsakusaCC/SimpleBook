@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ebookreader.simplebook.domain.model.ReaderSettings
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,6 +26,7 @@ class SettingsDataStore @Inject constructor(
         val LINE_HEIGHT = floatPreferencesKey("line_height")
         val BACKGROUND_COLOR = longPreferencesKey("background_color")
         val TEXT_COLOR = longPreferencesKey("text_color")
+        val LANGUAGE = stringPreferencesKey("language")
     }
 
     val settings: Flow<ReaderSettings> = context.dataStore.data.map { prefs ->
@@ -32,7 +34,8 @@ class SettingsDataStore @Inject constructor(
             fontSize = prefs[FONT_SIZE] ?: 16f,
             lineHeight = prefs[LINE_HEIGHT] ?: 1.5f,
             backgroundColor = prefs[BACKGROUND_COLOR] ?: 0xFFFFFFFF,
-            textColor = prefs[TEXT_COLOR] ?: 0xFF000000
+            textColor = prefs[TEXT_COLOR] ?: 0xFF000000,
+            language = prefs[LANGUAGE] ?: "zh"
         )
     }
 
@@ -50,5 +53,9 @@ class SettingsDataStore @Inject constructor(
 
     suspend fun updateTextColor(color: Long) {
         context.dataStore.edit { it[TEXT_COLOR] = color }
+    }
+
+    suspend fun updateLanguage(language: String) {
+        context.dataStore.edit { it[LANGUAGE] = language }
     }
 }

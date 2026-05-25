@@ -20,7 +20,7 @@ class BookService @Inject constructor(
 
     suspend fun getBookById(id: Long): Book? = bookRepository.getBookById(id)
 
-    suspend fun importBook(file: File): Book {
+    suspend fun importBook(file: File, originalName: String = file.nameWithoutExtension): Book {
         val format = when (file.extension.lowercase()) {
             "epub" -> BookFormat.EPUB
             "txt" -> BookFormat.TXT
@@ -34,13 +34,13 @@ class BookService @Inject constructor(
         when (format) {
             BookFormat.EPUB -> {
                 val result = epubParser.parse(file)
-                title = result.title
+                title = result.title.ifBlank { originalName }
                 author = result.author
                 coverPath = result.coverPath
             }
             BookFormat.TXT -> {
                 val result = txtParser.parse(file)
-                title = result.title
+                title = originalName
                 author = result.author
             }
         }

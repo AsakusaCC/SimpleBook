@@ -4,7 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ebookreader.simplebook.data.local.SettingsDataStore
 import com.ebookreader.simplebook.domain.model.Book
+import com.ebookreader.simplebook.domain.model.ReaderSettings
 import com.ebookreader.simplebook.domain.service.BookService
 import com.ebookreader.simplebook.domain.service.FileImportService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,8 +19,12 @@ import javax.inject.Inject
 @HiltViewModel
 class BookListViewModel @Inject constructor(
     private val bookService: BookService,
-    private val fileImportService: FileImportService
+    private val fileImportService: FileImportService,
+    private val settingsDataStore: SettingsDataStore
 ) : ViewModel() {
+
+    val settings: StateFlow<ReaderSettings> = settingsDataStore.settings
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderSettings())
 
     val books: StateFlow<List<Book>> = bookService.getAllBooks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

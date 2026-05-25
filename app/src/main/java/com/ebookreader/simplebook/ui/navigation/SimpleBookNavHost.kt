@@ -45,6 +45,7 @@ fun SimpleBookNavHost(
             val bookId = backStackEntry.arguments?.getLong("bookId") ?: 0L
             ReaderScreen(
                 bookId = bookId,
+                navController = navController,
                 windowWidthSizeClass = windowSizeClass.widthSizeClass
             )
         }

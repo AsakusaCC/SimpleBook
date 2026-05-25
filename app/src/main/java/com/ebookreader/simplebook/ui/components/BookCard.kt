@@ -6,8 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -31,6 +32,7 @@ fun BookCard(
     book: Book,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    unknownAuthorText: String = "未知",
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -45,32 +47,29 @@ fun BookCard(
     ) {
         Column {
             // Cover image or placeholder
-            if (book.coverPath != null) {
-                AsyncImage(
-                    model = File(book.coverPath),
-                    contentDescription = book.title,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                        .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                val placeholderColor = when (book.format.name.hashCode() % 5) {
-                    0 -> Color(0xFF6750A4)
-                    1 -> Color(0xFF0061A4)
-                    2 -> Color(0xFF984061)
-                    3 -> Color(0xFF006878)
-                    else -> Color(0xFF6B4FA2)
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                        .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-                        .background(placeholderColor),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
-                ) {
+            val placeholderColor = when (book.format.name.hashCode() % 5) {
+                0 -> Color(0xFF6750A4)
+                1 -> Color(0xFF0061A4)
+                2 -> Color(0xFF984061)
+                3 -> Color(0xFF006878)
+                else -> Color(0xFF6B4FA2)
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(3f / 4f)
+                    .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                    .background(placeholderColor),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                if (book.coverPath != null) {
+                    AsyncImage(
+                        model = File(book.coverPath),
+                        contentDescription = book.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
                     Text(
                         text = book.title.take(1).uppercase(),
                         style = MaterialTheme.typography.headlineLarge,
@@ -87,15 +86,13 @@ fun BookCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (book.author.isNotBlank()) {
-                    Text(
-                        text = book.author,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = book.author.ifBlank { unknownAuthorText },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,12 +28,14 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.ebookreader.simplebook.domain.model.getStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,11 +44,12 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
+    val strings = remember(settings.language) { getStrings(settings.language) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(strings.settings) },
                 navigationIcon = {
                     if (navController != null) {
                         IconButton(onClick = { navController.navigateUp() }) {
@@ -64,8 +68,36 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // Language
+            Text(strings.language, style = MaterialTheme.typography.titleMedium)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                listOf("zh" to strings.chinese, "en" to strings.english).forEach { (code, name) ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .border(
+                                    width = if (settings.language == code) 3.dp else 1.dp,
+                                    color = if (settings.language == code) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .clickable { viewModel.updateLanguage(code) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(name, style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            }
+
             // Font Size
-            Text("Font Size", style = MaterialTheme.typography.titleMedium)
+            Text(strings.fontSize, style = MaterialTheme.typography.titleMedium)
             Text("${settings.fontSize.toInt()} sp", style = MaterialTheme.typography.bodyMedium)
             Slider(
                 value = settings.fontSize,
@@ -75,7 +107,7 @@ fun SettingsScreen(
             )
 
             // Line Height
-            Text("Line Height", style = MaterialTheme.typography.titleMedium)
+            Text(strings.lineHeight, style = MaterialTheme.typography.titleMedium)
             Text(String.format("%.1fx", settings.lineHeight), style = MaterialTheme.typography.bodyMedium)
             Slider(
                 value = settings.lineHeight,
@@ -85,15 +117,15 @@ fun SettingsScreen(
             )
 
             // Background Color
-            Text("Background", style = MaterialTheme.typography.titleMedium)
+            Text(strings.background, style = MaterialTheme.typography.titleMedium)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 val colorPresets = listOf(
-                    "White" to 0xFFFFFFFF,
-                    "Sepia" to 0xFFF5F0E1,
-                    "Dark" to 0xFF2B2B2B,
-                    "Black" to 0xFF000000,
+                    strings.white to 0xFFFFFFFF,
+                    strings.sepia to 0xFFF5F0E1,
+                    strings.dark to 0xFF2B2B2B,
+                    strings.black to 0xFF000000,
                 )
                 colorPresets.forEach { (name, color) ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -114,7 +146,7 @@ fun SettingsScreen(
             }
 
             // About
-            Text("About", style = MaterialTheme.typography.titleMedium)
+            Text(strings.about, style = MaterialTheme.typography.titleMedium)
             Text("SimpleBook v1.0", style = MaterialTheme.typography.bodyMedium)
         }
     }

@@ -12,7 +12,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -27,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ebookreader.simplebook.domain.model.Book
+import com.ebookreader.simplebook.domain.model.getStrings
 import com.ebookreader.simplebook.ui.components.AdaptiveBookGrid
 
 @Composable
@@ -37,6 +37,8 @@ fun BookListScreen(
     viewModel: BookListViewModel = hiltViewModel()
 ) {
     val books by viewModel.books.collectAsState()
+    val settings by viewModel.settings.collectAsState()
+    val strings = remember(settings.language) { getStrings(settings.language) }
     var bookToDelete by remember { mutableStateOf<Book?>(null) }
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -47,36 +49,14 @@ fun BookListScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    importLauncher.launch(
-                        arrayOf("application/epub+zip", "text/plain")
-                    )
-                }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Import books"
-                )
-            }
-        }
-    ) { innerPadding ->
+    Box(modifier = modifier.fillMaxSize()) {
         if (books.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No books yet. Tap + to import.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = strings.noContent,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.Center)
+            )
         } else {
             AdaptiveBookGrid(
                 books = books,
@@ -85,17 +65,32 @@ fun BookListScreen(
                 onBookLongClick = { book ->
                     bookToDelete = book
                 },
-                modifier = Modifier.padding(innerPadding)
+                unknownAuthorText = strings.unknownAuthor
+            )
+        }
+
+        FloatingActionButton(
+            onClick = {
+                importLauncher.launch(
+                    arrayOf("application/epub+zip", "text/plain")
+                )
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = strings.importBook
             )
         }
     }
 
-    // Delete confirmation dialog
     bookToDelete?.let { book ->
         AlertDialog(
             onDismissRequest = { bookToDelete = null },
-            title = { Text("Delete Book") },
-            text = { Text("Are you sure you want to delete \"${book.title}\"?") },
+            title = { Text(strings.deleteBook) },
+            text = { Text(strings.deleteMessage(book.title)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -103,12 +98,12 @@ fun BookListScreen(
                         bookToDelete = null
                     }
                 ) {
-                    Text("Delete")
+                    Text(strings.delete)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { bookToDelete = null }) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
             }
         )
