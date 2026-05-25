@@ -19,6 +19,7 @@ fun AdaptiveBookGrid(
     onBookClick: (Book) -> Unit,
     onBookLongClick: (Book) -> Unit,
     unknownAuthorText: String = "未知",
+    bookProgress: Map<Long, Double> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     val columns = when (windowWidthSizeClass) {
@@ -39,7 +40,8 @@ fun AdaptiveBookGrid(
                 book = book,
                 onClick = { onBookClick(book) },
                 onLongClick = { onBookLongClick(book) },
-                unknownAuthorText = unknownAuthorText
+                unknownAuthorText = unknownAuthorText,
+                percentage = bookProgress[book.id] ?: 0.0
             )
         }
     }

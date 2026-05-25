@@ -37,6 +37,7 @@ fun BookListScreen(
     viewModel: BookListViewModel = hiltViewModel()
 ) {
     val books by viewModel.books.collectAsState()
+    val bookProgress by viewModel.bookProgress.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val strings = remember(settings.language) { getStrings(settings.language) }
     var bookToDelete by remember { mutableStateOf<Book?>(null) }
@@ -65,7 +66,8 @@ fun BookListScreen(
                 onBookLongClick = { book ->
                     bookToDelete = book
                 },
-                unknownAuthorText = strings.unknownAuthor
+                unknownAuthorText = strings.unknownAuthor,
+                bookProgress = bookProgress
             )
         }
 
