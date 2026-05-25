@@ -28,5 +28,7 @@ data class NoteEntity(
     val chapterIndex: Int = 0,
     val charOffset: Long = 0,
     val content: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val syncVersion: Long = 1,
+    val lastSyncedAt: Long? = null
 )

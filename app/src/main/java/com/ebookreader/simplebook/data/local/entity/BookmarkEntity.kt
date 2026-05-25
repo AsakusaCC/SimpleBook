@@ -19,5 +19,7 @@ data class BookmarkEntity(
     val chapterIndex: Int = 0,
     val charOffset: Long = 0,
     val name: String = "",
-    val createdAt: Long
+    val createdAt: Long,
+    val syncVersion: Long = 1,
+    val lastSyncedAt: Long? = null
 )

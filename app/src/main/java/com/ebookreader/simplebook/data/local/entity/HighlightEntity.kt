@@ -21,5 +21,7 @@ data class HighlightEntity(
     val endOffset: Long,
     val color: Int = 0xFFFFFF00.toInt(), // ARGB
     val note: String? = null,
-    val createdAt: Long
+    val createdAt: Long,
+    val syncVersion: Long = 1,
+    val lastSyncedAt: Long? = null
 )

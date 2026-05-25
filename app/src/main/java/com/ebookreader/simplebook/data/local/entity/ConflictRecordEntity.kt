@@ -5,7 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "reading_progress",
+    tableName = "conflict_records",
     foreignKeys = [ForeignKey(
         entity = BookEntity::class,
         parentColumns = ["id"],
@@ -13,13 +13,15 @@ import androidx.room.PrimaryKey
         onDelete = ForeignKey.CASCADE
     )]
 )
-data class ReadingProgressEntity(
+data class ConflictRecordEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val bookId: Long,
-    val chapterIndex: Int = 0,
-    val charOffset: Long = 0,
-    val percentage: Double = 0.0,
-    val updatedAt: Long,
-    val syncVersion: Long = 1,
-    val lastSyncedAt: Long? = null
+    val entityType: String,
+    val entityId: Long,
+    val localSyncVersion: Long,
+    val remoteSyncVersion: Long,
+    val localData: String,
+    val remoteData: String,
+    val createdAt: Long,
+    val resolvedAt: Long? = null
 )
