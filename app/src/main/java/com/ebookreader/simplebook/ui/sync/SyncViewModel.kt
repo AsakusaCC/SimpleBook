@@ -1,5 +1,6 @@
 package com.ebookreader.simplebook.ui.sync
 
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ebookreader.simplebook.data.local.dao.ConflictDao
@@ -29,6 +30,14 @@ class SyncViewModel @Inject constructor(
     val isSignedIn: Boolean get() = authManager.isSignedIn
 
     val accountEmail: String? get() = authManager.signedInAccount.value?.email
+
+    fun getSignInIntent(): Intent = authManager.signInIntent
+
+    fun handleSignInResult(data: Intent) {
+        viewModelScope.launch {
+            authManager.handleSignInResult(data)
+        }
+    }
 
     fun syncNow() {
         viewModelScope.launch { syncService.syncAll() }
