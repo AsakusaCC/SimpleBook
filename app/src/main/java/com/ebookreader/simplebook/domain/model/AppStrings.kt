@@ -33,6 +33,18 @@ data class AppStrings(
     val delete: String,
     val deleteMessage: (bookTitle: String) -> String,
     val chapterOf: (current: Int, total: Int) -> String,
+    // Sync
+    val syncTitle: String,
+    val syncSignIn: String,
+    val syncSignOut: String,
+    val syncNow: String,
+    val syncSignedIn: String,
+    val syncDescription: String,
+    val syncConflicts: String,
+    val syncNoConflicts: String,
+    val syncKeepLocal: String,
+    val syncUseRemote: String,
+    val syncBack: String,
 )
 
 fun getStrings(language: String): AppStrings = when (language) {
@@ -69,6 +81,18 @@ fun getStrings(language: String): AppStrings = when (language) {
         delete = "Delete",
         deleteMessage = { title -> "Are you sure you want to delete \"$title\"?" },
         chapterOf = { current, total -> "Chapter $current of $total" },
+        // Sync
+        syncTitle = "Google Drive Sync",
+        syncSignIn = "Sign in with Google Drive",
+        syncSignOut = "Sign Out",
+        syncNow = "Sync Now",
+        syncSignedIn = "Signed in: %s",
+        syncDescription = "Sync your books and reading progress across devices",
+        syncConflicts = "Resolve Conflicts",
+        syncNoConflicts = "No conflicts",
+        syncKeepLocal = "Keep Local",
+        syncUseRemote = "Use Remote",
+        syncBack = "Back",
     )
     else -> AppStrings(
         settings = "设置",
@@ -103,5 +127,17 @@ fun getStrings(language: String): AppStrings = when (language) {
         delete = "删除",
         deleteMessage = { title -> "确认删除「$title」吗？" },
         chapterOf = { current, total -> "第 $current 章 / 共 $total 章" },
+        // Sync
+        syncTitle = "Google Drive 同步",
+        syncSignIn = "登录 Google Drive",
+        syncSignOut = "退出登录",
+        syncNow = "立即同步",
+        syncSignedIn = "已登录：%s",
+        syncDescription = "在设备之间同步您的书籍和阅读进度",
+        syncConflicts = "解决冲突",
+        syncNoConflicts = "没有冲突",
+        syncKeepLocal = "全部保留本地",
+        syncUseRemote = "全部使用远端",
+        syncBack = "返回",
     )
 }

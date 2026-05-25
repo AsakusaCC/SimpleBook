@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -18,9 +20,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -36,15 +40,20 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.ebookreader.simplebook.domain.model.getStrings
+import com.ebookreader.simplebook.domain.service.SyncStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController? = null,
+    onSignInClick: (() -> Unit)? = null,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
     val strings = remember(settings.language) { getStrings(settings.language) }
+    val syncStatus by viewModel.syncStatus.collectAsState()
+    val isSignedIn = viewModel.isSignedIn
+    val accountEmail = viewModel.accountEmail
 
     Scaffold(
         topBar = {
@@ -148,6 +157,50 @@ fun SettingsScreen(
             // About
             Text(strings.about, style = MaterialTheme.typography.titleMedium)
             Text("SimpleBook v1.0", style = MaterialTheme.typography.bodyMedium)
+
+            // Google Drive Sync Section
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Text(strings.syncTitle, style = MaterialTheme.typography.titleMedium)
+            Text(
+                strings.syncDescription,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (isSignedIn) {
+                accountEmail?.let { email ->
+                    Text(
+                        strings.syncSignedIn.format(email),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                val isSyncing = syncStatus is SyncStatus.Syncing
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { viewModel.syncNow() },
+                        enabled = !isSyncing
+                    ) {
+                        Text(if (isSyncing) "..." else strings.syncNow)
+                    }
+                    OutlinedButton(onClick = { viewModel.signOut() }) {
+                        Text(strings.syncSignOut)
+                    }
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onSignInClick?.invoke() },
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Text(strings.syncSignIn)
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
         }
     }
 }

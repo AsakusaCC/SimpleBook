@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -27,20 +30,31 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ebookreader.simplebook.domain.model.Book
 import com.ebookreader.simplebook.domain.model.getStrings
+import com.ebookreader.simplebook.domain.service.SyncStatus
 import com.ebookreader.simplebook.ui.components.AdaptiveBookGrid
+import com.ebookreader.simplebook.ui.sync.SyncStatusIcon
+import com.ebookreader.simplebook.ui.sync.SyncViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookListScreen(
     windowWidthSizeClass: WindowWidthSizeClass,
     onBookClick: (Book) -> Unit,
+    onSyncClick: (() -> Unit)? = null,
+    onNavigateToSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    viewModel: BookListViewModel = hiltViewModel()
+    viewModel: BookListViewModel = hiltViewModel(),
+    syncViewModel: SyncViewModel = hiltViewModel()
 ) {
     val books by viewModel.books.collectAsState()
     val bookProgress by viewModel.bookProgress.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val strings = remember(settings.language) { getStrings(settings.language) }
     var bookToDelete by remember { mutableStateOf<Book?>(null) }
+
+    val syncStatus by syncViewModel.syncStatus.collectAsState()
+    val isSignedIn = syncViewModel.isSignedIn
+    val isSyncing = syncStatus is SyncStatus.Syncing
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -50,41 +64,68 @@ fun BookListScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        if (books.isEmpty()) {
-            Text(
-                text = strings.noContent,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.Center)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(strings.navBooks) },
+                actions = {
+                    SyncStatusIcon(
+                        isSyncing = isSyncing,
+                        isSignedIn = isSignedIn,
+                        onClick = {
+                            if (isSignedIn) {
+                                syncViewModel.syncNow()
+                                onSyncClick?.invoke()
+                            } else {
+                                onNavigateToSettings?.invoke()
+                            }
+                        }
+                    )
+                }
             )
-        } else {
-            AdaptiveBookGrid(
-                books = books,
-                windowWidthSizeClass = windowWidthSizeClass,
-                onBookClick = onBookClick,
-                onBookLongClick = { book ->
-                    bookToDelete = book
-                },
-                unknownAuthorText = strings.unknownAuthor,
-                bookProgress = bookProgress
-            )
-        }
-
-        FloatingActionButton(
-            onClick = {
-                importLauncher.launch(
-                    arrayOf("application/epub+zip", "text/plain")
-                )
-            },
+        },
+        modifier = modifier
+    ) { innerPadding ->
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 16.dp)
+                .fillMaxSize()
+                .padding(innerPadding)
         ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = strings.importBook
-            )
+            if (books.isEmpty()) {
+                Text(
+                    text = strings.noContent,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else {
+                AdaptiveBookGrid(
+                    books = books,
+                    windowWidthSizeClass = windowWidthSizeClass,
+                    onBookClick = onBookClick,
+                    onBookLongClick = { book ->
+                        bookToDelete = book
+                    },
+                    unknownAuthorText = strings.unknownAuthor,
+                    bookProgress = bookProgress
+                )
+            }
+
+            FloatingActionButton(
+                onClick = {
+                    importLauncher.launch(
+                        arrayOf("application/epub+zip", "text/plain")
+                    )
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = strings.importBook
+                )
+            }
         }
     }
 

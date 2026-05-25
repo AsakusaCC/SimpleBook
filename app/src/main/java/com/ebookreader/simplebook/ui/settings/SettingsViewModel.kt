@@ -3,7 +3,10 @@ package com.ebookreader.simplebook.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ebookreader.simplebook.data.local.SettingsDataStore
+import com.ebookreader.simplebook.data.remote.AuthManager
 import com.ebookreader.simplebook.domain.model.ReaderSettings
+import com.ebookreader.simplebook.domain.service.SyncService
+import com.ebookreader.simplebook.domain.service.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -13,11 +16,20 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsDataStore: SettingsDataStore
+    private val settingsDataStore: SettingsDataStore,
+    private val syncService: SyncService,
+    val authManager: AuthManager
 ) : ViewModel() {
 
     val settings: StateFlow<ReaderSettings> = settingsDataStore.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderSettings())
+
+    val syncStatus: StateFlow<SyncStatus> = syncService.syncStatus
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SyncStatus.Idle)
+
+    val isSignedIn: Boolean get() = authManager.isSignedIn
+
+    val accountEmail: String? get() = authManager.signedInAccount.value?.email
 
     fun updateFontSize(size: Float) {
         viewModelScope.launch { settingsDataStore.updateFontSize(size) }
@@ -41,5 +53,13 @@ class SettingsViewModel @Inject constructor(
 
     fun updateLanguage(language: String) {
         viewModelScope.launch { settingsDataStore.updateLanguage(language) }
+    }
+
+    fun syncNow() {
+        viewModelScope.launch { syncService.syncAll() }
+    }
+
+    fun signOut() {
+        authManager.signOut()
     }
 }
