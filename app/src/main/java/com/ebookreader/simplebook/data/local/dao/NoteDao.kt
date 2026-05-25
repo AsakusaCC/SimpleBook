@@ -20,4 +20,7 @@ interface NoteDao {
 
     @Delete
     suspend fun delete(note: NoteEntity)
+
+    @Query("SELECT * FROM notes WHERE bookId = :bookId ORDER BY createdAt DESC")
+    suspend fun getNotesForBookNow(bookId: Long): List<NoteEntity>
 }

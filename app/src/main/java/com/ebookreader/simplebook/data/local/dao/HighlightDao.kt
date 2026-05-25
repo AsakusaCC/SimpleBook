@@ -20,4 +20,7 @@ interface HighlightDao {
 
     @Delete
     suspend fun delete(highlight: HighlightEntity)
+
+    @Query("SELECT * FROM highlights WHERE bookId = :bookId ORDER BY createdAt DESC")
+    suspend fun getHighlightsForBookNow(bookId: Long): List<HighlightEntity>
 }

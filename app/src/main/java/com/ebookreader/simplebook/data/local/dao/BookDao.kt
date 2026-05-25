@@ -24,4 +24,10 @@ interface BookDao {
 
     @Delete
     suspend fun delete(book: BookEntity)
+
+    @Query("SELECT * FROM books ORDER BY lastReadAt DESC NULLS LAST, addedAt DESC")
+    suspend fun getAllBooksNow(): List<BookEntity>
+
+    @Query("SELECT * FROM books WHERE driveFileId = :driveFileId")
+    suspend fun getBookByDriveFileId(driveFileId: String): BookEntity?
 }

@@ -15,6 +15,9 @@ class NoteRepository @Inject constructor(
     fun getNotesForBook(bookId: Long): Flow<List<Note>> =
         noteDao.getNotesForBook(bookId).map { list -> list.map { it.toDomain() } }
 
+    suspend fun getNotesForBookNow(bookId: Long): List<Note> =
+        noteDao.getNotesForBookNow(bookId).map { it.toDomain() }
+
     fun getAllNotes(): Flow<List<Note>> =
         noteDao.getAllNotes().map { list -> list.map { it.toDomain() } }
 

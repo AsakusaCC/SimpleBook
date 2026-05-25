@@ -18,6 +18,9 @@ class HighlightRepository @Inject constructor(
     fun getHighlightsForBook(bookId: Long): Flow<List<Highlight>> =
         highlightDao.getHighlightsForBook(bookId).map { list -> list.map { it.toDomain() } }
 
+    suspend fun getHighlightsForBookNow(bookId: Long): List<Highlight> =
+        highlightDao.getHighlightsForBookNow(bookId).map { it.toDomain() }
+
     suspend fun addHighlight(highlight: Highlight): Long =
         highlightDao.insert(highlight.toEntity())
 

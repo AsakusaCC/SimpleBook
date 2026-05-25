@@ -17,8 +17,14 @@ class BookRepositoryImpl @Inject constructor(
     override fun getAllBooks(): Flow<List<Book>> =
         bookDao.getAllBooks().map { entities -> entities.map { it.toDomain() } }
 
+    override suspend fun getAllBooksNow(): List<Book> =
+        bookDao.getAllBooksNow().map { it.toDomain() }
+
     override suspend fun getBookById(id: Long): Book? =
         bookDao.getBookById(id)?.toDomain()
+
+    override suspend fun getBookByDriveFileId(driveFileId: String): Book? =
+        bookDao.getBookByDriveFileId(driveFileId)?.toDomain()
 
     override suspend fun addBook(book: Book): Long =
         bookDao.insert(book.toEntity())

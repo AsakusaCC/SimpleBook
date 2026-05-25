@@ -15,6 +15,9 @@ class BookmarkRepository @Inject constructor(
     fun getBookmarksForBook(bookId: Long): Flow<List<Bookmark>> =
         bookmarkDao.getBookmarksForBook(bookId).map { list -> list.map { it.toDomain() } }
 
+    suspend fun getBookmarksForBookNow(bookId: Long): List<Bookmark> =
+        bookmarkDao.getBookmarksForBookNow(bookId).map { it.toDomain() }
+
     fun getAllBookmarks(): Flow<List<Bookmark>> =
         bookmarkDao.getAllBookmarks().map { list -> list.map { it.toDomain() } }
 

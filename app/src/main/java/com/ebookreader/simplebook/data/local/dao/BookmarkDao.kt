@@ -20,4 +20,7 @@ interface BookmarkDao {
 
     @Delete
     suspend fun delete(bookmark: BookmarkEntity)
+
+    @Query("SELECT * FROM bookmarks WHERE bookId = :bookId ORDER BY createdAt DESC")
+    suspend fun getBookmarksForBookNow(bookId: Long): List<BookmarkEntity>
 }
