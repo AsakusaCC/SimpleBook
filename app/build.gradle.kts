@@ -111,7 +111,9 @@ dependencies {
     // Google Drive Sync
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("com.google.apis:google-api-services-drive:v3-rev20250511-2.0.0")
+    implementation("com.google.api-client:google-api-client-android:2.7.2")
     implementation("com.google.http-client:google-http-client-gson:1.46.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
