@@ -32,7 +32,9 @@ class HighlightRepository @Inject constructor(
         endOffset = endOffset,
         color = color.toLong(),
         note = note,
-        createdAt = createdAt
+        createdAt = createdAt,
+        syncVersion = syncVersion,
+        lastSyncedAt = lastSyncedAt
     )
 
     private fun Highlight.toEntity() = HighlightEntity(
@@ -43,6 +45,8 @@ class HighlightRepository @Inject constructor(
         endOffset = endOffset,
         color = color.toInt(),
         note = note,
-        createdAt = createdAt
+        createdAt = createdAt,
+        syncVersion = syncVersion,
+        lastSyncedAt = lastSyncedAt
     )
 }

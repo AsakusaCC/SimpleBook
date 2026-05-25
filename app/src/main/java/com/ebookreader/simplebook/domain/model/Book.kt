@@ -9,5 +9,8 @@ data class Book(
     val coverPath: String? = null,
     val fileSize: Long = 0,
     val addedAt: Long = System.currentTimeMillis(),
-    val lastReadAt: Long? = null
+    val lastReadAt: Long? = null,
+    val syncVersion: Long = 1,
+    val lastSyncedAt: Long? = null,
+    val driveFileId: String? = null
 )

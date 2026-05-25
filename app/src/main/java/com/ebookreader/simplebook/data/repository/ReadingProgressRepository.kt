@@ -23,7 +23,9 @@ class ReadingProgressRepository @Inject constructor(
         chapterIndex = chapterIndex,
         charOffset = charOffset,
         percentage = percentage,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        syncVersion = syncVersion,
+        lastSyncedAt = lastSyncedAt
     )
 
     private fun ReadingProgress.toEntity() = ReadingProgressEntity(
@@ -32,6 +34,8 @@ class ReadingProgressRepository @Inject constructor(
         chapterIndex = chapterIndex,
         charOffset = charOffset,
         percentage = percentage,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        syncVersion = syncVersion,
+        lastSyncedAt = lastSyncedAt
     )
 }

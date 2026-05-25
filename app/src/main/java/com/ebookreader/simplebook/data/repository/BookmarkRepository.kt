@@ -30,7 +30,9 @@ class BookmarkRepository @Inject constructor(
         chapterIndex = chapterIndex,
         charOffset = charOffset,
         name = name,
-        createdAt = createdAt
+        createdAt = createdAt,
+        syncVersion = syncVersion,
+        lastSyncedAt = lastSyncedAt
     )
 
     private fun Bookmark.toEntity() = BookmarkEntity(
@@ -39,6 +41,8 @@ class BookmarkRepository @Inject constructor(
         chapterIndex = chapterIndex,
         charOffset = charOffset,
         name = name,
-        createdAt = createdAt
+        createdAt = createdAt,
+        syncVersion = syncVersion,
+        lastSyncedAt = lastSyncedAt
     )
 }

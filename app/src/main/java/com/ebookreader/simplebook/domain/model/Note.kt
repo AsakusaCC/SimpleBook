@@ -7,5 +7,7 @@ data class Note(
     val chapterIndex: Int = 0,
     val charOffset: Long = 0,
     val content: String,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val syncVersion: Long = 1,
+    val lastSyncedAt: Long? = null
 )

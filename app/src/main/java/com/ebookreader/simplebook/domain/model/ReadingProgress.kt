@@ -6,5 +6,7 @@ data class ReadingProgress(
     val chapterIndex: Int = 0,
     val charOffset: Long = 0,
     val percentage: Double = 0.0,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val syncVersion: Long = 1,
+    val lastSyncedAt: Long? = null
 )

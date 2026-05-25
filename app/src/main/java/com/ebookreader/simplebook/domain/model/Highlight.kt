@@ -8,5 +8,7 @@ data class Highlight(
     val endOffset: Long,
     val color: Long = 0xFFFFFF00,
     val note: String? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val syncVersion: Long = 1,
+    val lastSyncedAt: Long? = null
 )

@@ -28,7 +28,9 @@ class NoteRepository @Inject constructor(
         chapterIndex = chapterIndex,
         charOffset = charOffset,
         content = content,
-        createdAt = createdAt
+        createdAt = createdAt,
+        syncVersion = syncVersion,
+        lastSyncedAt = lastSyncedAt
     )
 
     private fun Note.toEntity() = NoteEntity(
@@ -38,6 +40,8 @@ class NoteRepository @Inject constructor(
         chapterIndex = chapterIndex,
         charOffset = charOffset,
         content = content,
-        createdAt = createdAt
+        createdAt = createdAt,
+        syncVersion = syncVersion,
+        lastSyncedAt = lastSyncedAt
     )
 }

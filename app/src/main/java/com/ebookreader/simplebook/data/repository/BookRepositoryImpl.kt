@@ -38,7 +38,10 @@ class BookRepositoryImpl @Inject constructor(
         coverPath = coverPath,
         fileSize = fileSize,
         addedAt = addedAt,
-        lastReadAt = lastReadAt
+        lastReadAt = lastReadAt,
+        syncVersion = syncVersion,
+        lastSyncedAt = lastSyncedAt,
+        driveFileId = driveFileId
     )
 
     private fun Book.toEntity() = BookEntity(
@@ -50,6 +53,9 @@ class BookRepositoryImpl @Inject constructor(
         coverPath = coverPath,
         fileSize = fileSize,
         addedAt = addedAt,
-        lastReadAt = lastReadAt
+        lastReadAt = lastReadAt,
+        syncVersion = syncVersion,
+        lastSyncedAt = lastSyncedAt,
+        driveFileId = driveFileId
     )
 }
