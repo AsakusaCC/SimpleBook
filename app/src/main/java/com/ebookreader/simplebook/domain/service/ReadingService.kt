@@ -18,7 +18,8 @@ class ReadingService @Inject constructor(
                 chapterIndex = chapterIndex,
                 charOffset = charOffset,
                 percentage = percentage,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = System.currentTimeMillis(),
+                syncVersion = existing.syncVersion + 1
             )
         } else {
             ReadingProgress(
@@ -33,7 +34,10 @@ class ReadingService @Inject constructor(
 
         // Update lastReadAt on book
         bookRepo.getBookById(bookId)?.let { book ->
-            bookRepo.updateBook(book.copy(lastReadAt = System.currentTimeMillis()))
+            bookRepo.updateBook(book.copy(
+                lastReadAt = System.currentTimeMillis(),
+                syncVersion = book.syncVersion + 1
+            ))
         }
     }
 
