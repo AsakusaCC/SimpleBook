@@ -53,6 +53,8 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/DEPENDENCIES"
         }
     }
 }
@@ -105,6 +107,11 @@ dependencies {
 
     // Core
     implementation("androidx.core:core-ktx:1.13.0")
+
+    // Google Drive Sync
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20250511-2.0.0")
+    implementation("com.google.http-client:google-http-client-gson:1.46.3")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
