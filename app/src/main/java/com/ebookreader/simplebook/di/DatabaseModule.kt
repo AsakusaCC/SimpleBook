@@ -5,10 +5,10 @@ import androidx.room.Room
 import com.ebookreader.simplebook.data.local.SimpleBookDatabase
 import com.ebookreader.simplebook.data.local.dao.BookDao
 import com.ebookreader.simplebook.data.local.dao.BookmarkDao
-import com.ebookreader.simplebook.data.local.dao.ConflictDao
 import com.ebookreader.simplebook.data.local.dao.HighlightDao
 import com.ebookreader.simplebook.data.local.dao.NoteDao
 import com.ebookreader.simplebook.data.local.dao.ReadingProgressDao
+import com.ebookreader.simplebook.data.local.dao.SyncLogDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,7 +29,11 @@ object DatabaseModule {
             context,
             SimpleBookDatabase::class.java,
             "simplebook.db"
-        ).addMigrations(SimpleBookDatabase.MIGRATION_1_2)
+        )
+            .addMigrations(
+                SimpleBookDatabase.MIGRATION_1_2,
+                SimpleBookDatabase.MIGRATION_2_3
+            )
             .fallbackToDestructiveMigration()
             .build()
 
@@ -50,5 +54,5 @@ object DatabaseModule {
     fun provideNoteDao(db: SimpleBookDatabase): NoteDao = db.noteDao()
 
     @Provides
-    fun provideConflictDao(db: SimpleBookDatabase): ConflictDao = db.conflictDao()
+    fun provideSyncLogDao(db: SimpleBookDatabase): SyncLogDao = db.syncLogDao()
 }
