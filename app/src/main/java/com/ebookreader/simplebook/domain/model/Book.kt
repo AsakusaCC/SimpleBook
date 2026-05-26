@@ -1,7 +1,7 @@
 package com.ebookreader.simplebook.domain.model
 
 data class Book(
-    val id: Long = 0,
+    val uuid: String = java.util.UUID.randomUUID().toString(),
     val title: String,
     val author: String = "",
     val filePath: String,
@@ -10,7 +10,8 @@ data class Book(
     val fileSize: Long = 0,
     val addedAt: Long = System.currentTimeMillis(),
     val lastReadAt: Long? = null,
-    val syncVersion: Long = 1,
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isDeleted: Boolean = false,
     val lastSyncedAt: Long? = null,
     val driveFileId: String? = null
 )

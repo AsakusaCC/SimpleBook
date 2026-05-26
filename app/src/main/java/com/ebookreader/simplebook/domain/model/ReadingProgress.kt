@@ -1,12 +1,11 @@
 package com.ebookreader.simplebook.domain.model
 
 data class ReadingProgress(
-    val id: Long = 0,
-    val bookId: Long,
+    val uuid: String = java.util.UUID.randomUUID().toString(),
+    val bookUuid: String,
     val chapterIndex: Int = 0,
     val charOffset: Long = 0,
     val percentage: Double = 0.0,
     val updatedAt: Long = System.currentTimeMillis(),
-    val syncVersion: Long = 1,
-    val lastSyncedAt: Long? = null
+    val isDeleted: Boolean = false
 )

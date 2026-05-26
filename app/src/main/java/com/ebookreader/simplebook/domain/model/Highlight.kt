@@ -1,14 +1,14 @@
 package com.ebookreader.simplebook.domain.model
 
 data class Highlight(
-    val id: Long = 0,
-    val bookId: Long,
+    val uuid: String = java.util.UUID.randomUUID().toString(),
+    val bookUuid: String,
     val chapterIndex: Int = 0,
     val startOffset: Long,
     val endOffset: Long,
     val color: Long = 0xFFFFFF00,
     val note: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
-    val syncVersion: Long = 1,
-    val lastSyncedAt: Long? = null
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isDeleted: Boolean = false
 )
