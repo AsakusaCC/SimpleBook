@@ -6,16 +6,17 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "books")
 data class BookEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @PrimaryKey val uuid: String,
     val title: String,
     val author: String = "",
     val filePath: String,
-    @ColumnInfo(name = "format") val format: String, // "EPUB" or "TXT"
+    @ColumnInfo(name = "format") val format: String,
     val coverPath: String? = null,
     val fileSize: Long = 0,
-    val addedAt: Long, // timestamp millis
+    val addedAt: Long,
     val lastReadAt: Long? = null,
-    val syncVersion: Long = 1,
+    val updatedAt: Long,
+    val isDeleted: Boolean = false,
     val lastSyncedAt: Long? = null,
     val driveFileId: String? = null
 )

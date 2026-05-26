@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Index
 
 @Entity(
-    tableName = "highlights",
+    tableName = "sync_logs",
     foreignKeys = [ForeignKey(
         entity = BookEntity::class,
         parentColumns = ["uuid"],
@@ -15,15 +15,13 @@ import androidx.room.Index
     )],
     indices = [Index("bookUuid")]
 )
-data class HighlightEntity(
-    @PrimaryKey val uuid: String,
+data class SyncLogEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val bookUuid: String,
-    val chapterIndex: Int = 0,
-    val startOffset: Long,
-    val endOffset: Long,
-    val color: Int = 0xFFFFFF00.toInt(),
-    val note: String? = null,
-    val createdAt: Long,
-    val updatedAt: Long,
-    val isDeleted: Boolean = false
+    val entityType: String,
+    val entityUuid: String,
+    val action: String,
+    val localUpdatedAt: Long?,
+    val remoteUpdatedAt: Long?,
+    val resolvedAt: Long
 )

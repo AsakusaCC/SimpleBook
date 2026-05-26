@@ -3,23 +3,24 @@ package com.ebookreader.simplebook.data.local.entity
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
+import androidx.room.Index
 
 @Entity(
     tableName = "reading_progress",
     foreignKeys = [ForeignKey(
         entity = BookEntity::class,
-        parentColumns = ["id"],
-        childColumns = ["bookId"],
+        parentColumns = ["uuid"],
+        childColumns = ["bookUuid"],
         onDelete = ForeignKey.CASCADE
-    )]
+    )],
+    indices = [Index("bookUuid")]
 )
 data class ReadingProgressEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val bookId: Long,
+    @PrimaryKey val uuid: String,
+    val bookUuid: String,
     val chapterIndex: Int = 0,
     val charOffset: Long = 0,
     val percentage: Double = 0.0,
     val updatedAt: Long,
-    val syncVersion: Long = 1,
-    val lastSyncedAt: Long? = null
+    val isDeleted: Boolean = false
 )
