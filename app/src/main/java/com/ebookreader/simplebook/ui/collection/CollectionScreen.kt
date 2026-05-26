@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -41,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -286,7 +288,8 @@ fun NoteGroupedList(
                     title = group.book.title,
                     count = group.items.size,
                     isExpanded = isExpanded,
-                    onClick = { expandedState[group.book.id] = !isExpanded }
+                    onClick = { expandedState[group.book.id] = !isExpanded },
+                    icon = Icons.Default.Create
                 )
             }
             if (isExpanded) {
@@ -317,7 +320,8 @@ private fun GroupHeader(
     title: String,
     count: Int,
     isExpanded: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    icon: ImageVector = Icons.Default.Bookmark
 ) {
     Row(
         modifier = Modifier
@@ -327,7 +331,7 @@ private fun GroupHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            Icons.Default.Bookmark,
+            icon,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
             tint = MaterialTheme.colorScheme.primary

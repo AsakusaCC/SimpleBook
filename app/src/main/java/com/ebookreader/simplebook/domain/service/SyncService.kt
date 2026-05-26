@@ -76,10 +76,12 @@ class SyncService @Inject constructor(
         syncMutex.withLock {
             try {
                 _syncStatus.value = SyncStatus.Syncing
-                Log.d(TAG, "syncAll: starting pullFromRemote")
-                pullFromRemote()
+                // Push first so local deletions are uploaded before pulling remote state.
+                // This prevents the pull from re-adding locally deleted items.
                 Log.d(TAG, "syncAll: starting pushToRemote")
                 pushToRemote()
+                Log.d(TAG, "syncAll: starting pullFromRemote")
+                pullFromRemote()
                 refreshConflictCount()
                 val now = System.currentTimeMillis()
                 _lastSyncedAt.value = now

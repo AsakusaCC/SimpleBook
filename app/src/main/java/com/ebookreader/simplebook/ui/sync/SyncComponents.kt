@@ -55,7 +55,7 @@ fun SyncTimeLabel(
     val timeText = when {
         isSyncing -> "同步中..."
         lastSyncedAt != null -> {
-            val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val sdf = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault())
             "上次同步 ${sdf.format(Date(lastSyncedAt))}"
         }
         else -> null
