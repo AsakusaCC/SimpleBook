@@ -248,7 +248,7 @@ fun BookmarkGroupedList(
             if (isExpanded) {
                 items(
                     items = group.items,
-                    key = { "bookmark_${it.id}" }
+                    key = { "bookmark_${it.uuid}" }
                 ) { bookmark ->
                     SwipeToDeleteItem(
                         onDismiss = { onDelete(bookmark) }
@@ -295,7 +295,7 @@ fun NoteGroupedList(
             if (isExpanded) {
                 items(
                     items = group.items,
-                    key = { "note_${it.id}" }
+                    key = { "note_${it.uuid}" }
                 ) { note ->
                     SwipeToDeleteItem(
                         onDismiss = { onDelete(note) }
