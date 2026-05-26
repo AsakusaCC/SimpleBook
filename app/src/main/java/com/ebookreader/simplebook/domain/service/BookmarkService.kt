@@ -35,6 +35,10 @@ class BookmarkService @Inject constructor(
         }
     }
 
+    suspend fun deleteBookmark(bookmark: Bookmark) {
+        bookmarkRepo.deleteBookmark(bookmark)
+    }
+
     suspend fun isBookmarked(bookId: Long, chapterIndex: Int): Boolean {
         val bookmarks = bookmarkRepo.getBookmarksForBook(bookId).first()
         return bookmarks.any { it.chapterIndex == chapterIndex }
