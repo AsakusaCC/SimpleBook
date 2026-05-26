@@ -16,9 +16,9 @@ class BookmarkViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val bookmarkService: BookmarkService
 ) : ViewModel() {
-    private val bookId: Long = savedStateHandle["bookId"] ?: 0L
+    private val bookUuid: String = savedStateHandle["bookUuid"] ?: ""
 
     val bookmarks: StateFlow<List<Bookmark>> =
-        (if (bookId > 0) bookmarkService.getBookmarksForBook(bookId) else bookmarkService.getAllBookmarks())
+        (if (bookUuid.isNotEmpty()) bookmarkService.getBookmarksForBook(bookUuid) else bookmarkService.getAllBookmarks())
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 }

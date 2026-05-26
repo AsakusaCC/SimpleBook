@@ -33,17 +33,17 @@ class BookListViewModel @Inject constructor(
     val books: StateFlow<List<Book>> = bookService.getAllBooks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _bookProgress = MutableStateFlow<Map<Long, Double>>(emptyMap())
-    val bookProgress: StateFlow<Map<Long, Double>> = _bookProgress.asStateFlow()
+    private val _bookProgress = MutableStateFlow<Map<String, Double>>(emptyMap())
+    val bookProgress: StateFlow<Map<String, Double>> = _bookProgress.asStateFlow()
 
     init {
         viewModelScope.launch {
             books.collect { bookList ->
-                val progressMap = mutableMapOf<Long, Double>()
+                val progressMap = mutableMapOf<String, Double>()
                 for (book in bookList) {
-                    val progress = readingService.loadProgress(book.id)
+                    val progress = readingService.loadProgress(book.uuid)
                     if (progress != null && progress.percentage > 0.0) {
-                        progressMap[book.id] = progress.percentage
+                        progressMap[book.uuid] = progress.percentage
                     }
                 }
                 _bookProgress.value = progressMap

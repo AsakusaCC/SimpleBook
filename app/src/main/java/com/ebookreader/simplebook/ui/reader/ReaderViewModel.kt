@@ -46,7 +46,7 @@ class ReaderViewModel @Inject constructor(
     private val settingsDataStore: SettingsDataStore
 ) : ViewModel() {
 
-    private val bookId: Long = savedStateHandle["bookId"] ?: 0L
+    private val bookUuid: String = savedStateHandle["bookUuid"] ?: ""
     private val initialChapterIndex: Int = savedStateHandle["chapterIndex"] ?: -1
     private val initialCharOffset: Long = savedStateHandle["charOffset"] ?: 0L
 
@@ -98,7 +98,7 @@ class ReaderViewModel @Inject constructor(
 
     private fun collectBookmarks() {
         viewModelScope.launch {
-            bookmarkService.getBookmarksForBook(bookId).collect { list ->
+            bookmarkService.getBookmarksForBook(bookUuid).collect { list ->
                 _bookmarks.value = list
             }
         }
@@ -106,7 +106,7 @@ class ReaderViewModel @Inject constructor(
 
     private fun collectNotes() {
         viewModelScope.launch {
-            noteService.getNotesForBook(bookId).collect { list ->
+            noteService.getNotesForBook(bookUuid).collect { list ->
                 _notes.value = list
             }
         }
@@ -114,7 +114,7 @@ class ReaderViewModel @Inject constructor(
 
     private fun loadBook() {
         viewModelScope.launch {
-            val book = bookService.getBookById(bookId) ?: run {
+            val book = bookService.getBookByUuid(bookUuid) ?: run {
                 _isLoading.value = false
                 return@launch
             }
@@ -125,7 +125,7 @@ class ReaderViewModel @Inject constructor(
                 BookFormat.TXT -> loadTxtChapters(book)
             }
 
-            readingService.loadProgress(bookId)?.let { progress ->
+            readingService.loadProgress(bookUuid)?.let { progress ->
                 _currentChapterIndex.value = progress.chapterIndex
                 val totalChapters = _chapters.value.size
                 _scrollPercentage.value = if (totalChapters > 0) {
@@ -298,18 +298,18 @@ class ReaderViewModel @Inject constructor(
 
     private fun refreshBookmarkStatus() {
         viewModelScope.launch {
-            _isBookmarked.value = bookmarkService.isBookmarked(bookId, _currentChapterIndex.value)
+            _isBookmarked.value = bookmarkService.isBookmarked(bookUuid, _currentChapterIndex.value)
         }
     }
 
     fun toggleBookmark() {
         viewModelScope.launch {
             if (_isBookmarked.value) {
-                bookmarkService.deleteBookmarkForPosition(bookId, _currentChapterIndex.value)
+                bookmarkService.deleteBookmarkForPosition(bookUuid, _currentChapterIndex.value)
                 _isBookmarked.value = false
             } else {
                 val chapterTitle = _chapters.value.getOrNull(_currentChapterIndex.value)?.title ?: ""
-                bookmarkService.addBookmark(bookId, _currentChapterIndex.value, 0, chapterTitle)
+                bookmarkService.addBookmark(bookUuid, _currentChapterIndex.value, 0, chapterTitle)
                 _isBookmarked.value = true
             }
         }
@@ -319,7 +319,7 @@ class ReaderViewModel @Inject constructor(
         viewModelScope.launch {
             noteService.addNote(
                 Note(
-                    bookId = bookId,
+                    bookUuid = bookUuid,
                     chapterIndex = _currentChapterIndex.value,
                     content = content
                 )
@@ -352,7 +352,7 @@ class ReaderViewModel @Inject constructor(
             } else 0.0
 
             readingService.saveProgress(
-                bookId = bookId,
+                bookUuid = bookUuid,
                 chapterIndex = _currentChapterIndex.value,
                 charOffset = 0,
                 percentage = overallPct

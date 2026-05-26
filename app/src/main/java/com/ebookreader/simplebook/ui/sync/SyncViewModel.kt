@@ -3,8 +3,8 @@ package com.ebookreader.simplebook.ui.sync
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ebookreader.simplebook.data.local.dao.ConflictDao
-import com.ebookreader.simplebook.data.local.entity.ConflictRecordEntity
+import com.ebookreader.simplebook.data.local.dao.SyncLogDao
+import com.ebookreader.simplebook.data.local.entity.SyncLogEntity
 import com.ebookreader.simplebook.data.remote.AuthManager
 import com.ebookreader.simplebook.domain.service.SyncService
 import com.ebookreader.simplebook.domain.service.SyncStatus
@@ -21,23 +21,19 @@ import javax.inject.Inject
 class SyncViewModel @Inject constructor(
     private val syncService: SyncService,
     val authManager: AuthManager,
-    private val conflictDao: ConflictDao
+    private val syncLogDao: SyncLogDao
 ) : ViewModel() {
 
     val syncStatus: StateFlow<SyncStatus> = syncService.syncStatus
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SyncStatus.Idle)
 
-    val conflictCount: StateFlow<Int> = syncService.conflictCount
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
     val lastSyncedAt: StateFlow<Long?> = syncService.lastSyncedAt
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val conflicts: StateFlow<List<ConflictRecordEntity>> = conflictDao.getUnresolvedConflicts()
+    val syncLogs: StateFlow<List<SyncLogEntity>> = syncLogDao.getRecentLogs()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val isSignedIn: Boolean get() = authManager.isSignedIn
-
     val accountEmail: String? get() = authManager.signedInAccount.value?.email
 
     fun getSignInIntent(): Intent = authManager.signInIntent
@@ -49,36 +45,19 @@ class SyncViewModel @Inject constructor(
         viewModelScope.launch {
             val result = authManager.handleSignInResult(data)
             if (result.isFailure) {
-                val exception = result.exceptionOrNull()
-                _signInError.value = exception?.message ?: "Sign-in failed"
+                _signInError.value = result.exceptionOrNull()?.message ?: "Sign-in failed"
             } else {
                 _signInError.value = null
             }
         }
     }
 
-    fun clearSignInError() {
-        _signInError.value = null
-    }
-
-    fun setSignInError(message: String) {
-        _signInError.value = message
-    }
+    fun clearSignInError() { _signInError.value = null }
+    fun setSignInError(message: String) { _signInError.value = message }
 
     fun syncNow() {
-        android.util.Log.d("SyncViewModel", "syncNow: isSignedIn=$isSignedIn")
         viewModelScope.launch { syncService.syncAll() }
     }
 
-    fun resolveConflict(conflictId: Long, useRemote: Boolean) {
-        viewModelScope.launch { syncService.resolveConflict(conflictId, useRemote) }
-    }
-
-    fun resolveAllConflicts(useRemote: Boolean) {
-        viewModelScope.launch { syncService.resolveAllConflicts(useRemote) }
-    }
-
-    fun signOut() {
-        authManager.signOut()
-    }
+    fun signOut() { authManager.signOut() }
 }

@@ -33,11 +33,11 @@ class CollectionViewModel @Inject constructor(
             bookmarkService.getAllBookmarks(),
             bookService.getAllBooks()
         ) { bookmarks, books ->
-            val bookMap = books.associateBy { it.id }
+            val bookMap = books.associateBy { it.uuid }
             bookmarks
-                .groupBy { it.bookId }
-                .mapNotNull { (bookId, bms) ->
-                    bookMap[bookId]?.let { book -> GroupedItems(book, bms) }
+                .groupBy { it.bookUuid }
+                .mapNotNull { (bookUuid, bms) ->
+                    bookMap[bookUuid]?.let { book -> GroupedItems(book, bms) }
                 }
                 .sortedByDescending { it.items.maxOfOrNull { it.createdAt } }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -47,20 +47,20 @@ class CollectionViewModel @Inject constructor(
             noteService.getAllNotes(),
             bookService.getAllBooks()
         ) { notes, books ->
-            val bookMap = books.associateBy { it.id }
+            val bookMap = books.associateBy { it.uuid }
             notes
-                .groupBy { it.bookId }
-                .mapNotNull { (bookId, ns) ->
-                    bookMap[bookId]?.let { book -> GroupedItems(book, ns) }
+                .groupBy { it.bookUuid }
+                .mapNotNull { (bookUuid, ns) ->
+                    bookMap[bookUuid]?.let { book -> GroupedItems(book, ns) }
                 }
                 .sortedByDescending { it.items.maxOfOrNull { it.createdAt } }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun deleteBookmark(bookmark: Bookmark) {
-        viewModelScope.launch { bookmarkService.deleteBookmark(bookmark) }
+        viewModelScope.launch { bookmarkService.softDeleteBookmark(bookmark) }
     }
 
     fun deleteNote(note: Note) {
-        viewModelScope.launch { noteService.deleteNote(note) }
+        viewModelScope.launch { noteService.softDeleteNote(note) }
     }
 }
