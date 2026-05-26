@@ -228,7 +228,7 @@ fun BookmarkGroupedList(
         return
     }
     val expandedState = remember { mutableStateMapOf<Long, Boolean>() }
-    groups.forEach { it.book.id.let { id -> if (id !in expandedState) expandedState[id] = true } }
+    groups.forEach { it.book.id.let { id -> if (id !in expandedState) expandedState[id] = false } }
 
     LazyColumn(
         contentPadding = PaddingValues(vertical = 8.dp)
@@ -274,7 +274,7 @@ fun NoteGroupedList(
         return
     }
     val expandedState = remember { mutableStateMapOf<Long, Boolean>() }
-    groups.forEach { it.book.id.let { id -> if (id !in expandedState) expandedState[id] = true } }
+    groups.forEach { it.book.id.let { id -> if (id !in expandedState) expandedState[id] = false } }
 
     LazyColumn(
         contentPadding = PaddingValues(vertical = 8.dp)

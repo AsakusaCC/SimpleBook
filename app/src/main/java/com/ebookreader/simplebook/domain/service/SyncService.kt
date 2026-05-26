@@ -332,6 +332,8 @@ class SyncService @Inject constructor(
             } else {
                 applyRemoteAnnotations(localBook, metadata, driveFolderId)
             }
+            // Always apply remote deletions regardless of conflict state
+            applyRemoteDeletions(localBook, metadata)
         }
     }
 
@@ -478,14 +480,6 @@ class SyncService @Inject constructor(
                 )
             }
         }
-        // Delete local bookmarks absent from remote (only previously synced ones)
-        val remoteBookmarkPositions = metadata.bookmarks.map { Pair(it.chapterIndex, it.charOffset) }.toSet()
-        for (localBm in localBookmarks) {
-            if (Pair(localBm.chapterIndex, localBm.charOffset) !in remoteBookmarkPositions && localBm.lastSyncedAt != null) {
-                bookmarkRepository.deleteBookmark(localBm)
-            }
-        }
-
         // Apply remote highlights
         val localHighlights = highlightRepository.getHighlightsForBookNow(localBook.id)
         for (hl in metadata.highlights) {
@@ -519,13 +513,6 @@ class SyncService @Inject constructor(
                 )
             }
         }
-        // Delete local highlights absent from remote (only previously synced ones)
-        val remoteHighlightKeys = metadata.highlights.map { Triple(it.chapterIndex, it.startOffset, it.endOffset) }.toSet()
-        for (localHl in localHighlights) {
-            if (Triple(localHl.chapterIndex, localHl.startOffset, localHl.endOffset) !in remoteHighlightKeys && localHl.lastSyncedAt != null) {
-                highlightRepository.deleteHighlight(localHl)
-            }
-        }
 
         // Apply remote notes
         val localNotes = noteRepository.getNotesForBookNow(localBook.id)
@@ -556,7 +543,29 @@ class SyncService @Inject constructor(
                 )
             }
         }
-        // Delete local notes absent from remote (only previously synced ones)
+    }
+
+    private suspend fun applyRemoteDeletions(localBook: Book, metadata: BookMetadata) {
+        // Delete local bookmarks absent from remote (only previously synced ones)
+        val localBookmarks = bookmarkRepository.getBookmarksForBookNow(localBook.id)
+        val remoteBookmarkPositions = metadata.bookmarks.map { Pair(it.chapterIndex, it.charOffset) }.toSet()
+        for (localBm in localBookmarks) {
+            if (Pair(localBm.chapterIndex, localBm.charOffset) !in remoteBookmarkPositions && localBm.lastSyncedAt != null) {
+                bookmarkRepository.deleteBookmark(localBm)
+            }
+        }
+
+        // Delete local highlights absent from remote
+        val localHighlights = highlightRepository.getHighlightsForBookNow(localBook.id)
+        val remoteHighlightKeys = metadata.highlights.map { Triple(it.chapterIndex, it.startOffset, it.endOffset) }.toSet()
+        for (localHl in localHighlights) {
+            if (Triple(localHl.chapterIndex, localHl.startOffset, localHl.endOffset) !in remoteHighlightKeys && localHl.lastSyncedAt != null) {
+                highlightRepository.deleteHighlight(localHl)
+            }
+        }
+
+        // Delete local notes absent from remote
+        val localNotes = noteRepository.getNotesForBookNow(localBook.id)
         val remoteNotePositions = metadata.notes.map { Pair(it.chapterIndex, it.charOffset) }.toSet()
         for (localNt in localNotes) {
             if (Pair(localNt.chapterIndex, localNt.charOffset) !in remoteNotePositions && localNt.lastSyncedAt != null) {
