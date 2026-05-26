@@ -93,7 +93,7 @@ abstract class SimpleBookDatabase : RoomDatabase() {
                 )
                 db.execSQL(
                     """INSERT INTO books_new (uuid, title, author, filePath, format, coverPath, fileSize, addedAt, lastReadAt, updatedAt, isDeleted, lastSyncedAt, driveFileId)
-                       SELECT lower(hex(randomblob(4)) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6))), title, author, filePath, format, coverPath, fileSize, addedAt, lastReadAt, strftime('%s','now')*1000, 0, lastSyncedAt, driveFileId FROM books""".trimIndent()
+                       SELECT lower(hex(randomblob(16))), title, author, filePath, format, coverPath, fileSize, addedAt, lastReadAt, strftime('%s','now')*1000, 0, lastSyncedAt, driveFileId FROM books""".trimIndent()
                 )
                 db.execSQL("DROP TABLE books")
                 db.execSQL("ALTER TABLE books_new RENAME TO books")

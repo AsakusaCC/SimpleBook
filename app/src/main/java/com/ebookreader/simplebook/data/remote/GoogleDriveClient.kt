@@ -30,9 +30,12 @@ class GoogleDriveClient @Inject constructor(
             credential.selectedAccount = account.account
             Drive.Builder(
                 com.google.api.client.http.javanet.NetHttpTransport(),
-                GsonFactory.getDefaultInstance(),
-                credential
-            ).setApplicationName("SimpleBook").build()
+                GsonFactory.getDefaultInstance()
+            ) { request ->
+                credential.initialize(request)
+                request.readTimeout = 300000
+                request.connectTimeout = 60000
+            }.setApplicationName("SimpleBook").build()
         }
 
     suspend fun uploadFile(

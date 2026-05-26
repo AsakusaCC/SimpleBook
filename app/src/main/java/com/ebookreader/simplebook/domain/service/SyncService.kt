@@ -3,6 +3,7 @@ package com.ebookreader.simplebook.domain.service
 import android.content.Context
 import android.util.Log
 import com.ebookreader.simplebook.data.local.dao.SyncLogDao
+import com.ebookreader.simplebook.data.parser.EpubParser
 import com.ebookreader.simplebook.data.local.entity.SyncLogEntity
 import com.ebookreader.simplebook.data.remote.AuthManager
 import com.ebookreader.simplebook.data.remote.BookMetadata
@@ -52,12 +53,14 @@ class SyncService @Inject constructor(
     private val highlightRepository: HighlightRepository,
     private val noteRepository: NoteRepository,
     private val syncLogDao: SyncLogDao,
-    private val gson: Gson
+    private val gson: Gson,
+    private val epubParser: EpubParser
 ) {
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val syncStatus: StateFlow<SyncStatus> = _syncStatus.asStateFlow()
 
-    private val _lastSyncedAt = MutableStateFlow<Long?>(null)
+    private val prefs = context.getSharedPreferences("sync_prefs", Context.MODE_PRIVATE)
+    private val _lastSyncedAt = MutableStateFlow<Long?>(prefs.getLong("last_synced_at", 0L).takeIf { it > 0 })
     val lastSyncedAt: StateFlow<Long?> = _lastSyncedAt.asStateFlow()
 
     private val syncMutex = Mutex()
@@ -84,6 +87,7 @@ class SyncService @Inject constructor(
                 pushToRemote()
                 val now = System.currentTimeMillis()
                 _lastSyncedAt.value = now
+                prefs.edit().putLong("last_synced_at", now).apply()
                 _syncStatus.value = SyncStatus.Success
                 Log.d(TAG, "syncAll: completed successfully")
             } catch (e: Exception) {
@@ -103,45 +107,51 @@ class SyncService @Inject constructor(
 
         for (book in books) {
             Log.d(TAG, "pushToRemote: pushing book=${book.title}, uuid=${book.uuid}, isDeleted=${book.isDeleted}")
+            var currentBook = book
 
-            val bookFolderName = "book_${book.uuid}"
+            val bookFolderName = "book_${currentBook.uuid}"
             val bookFolderId = driveClient.createFolder(bookFolderName, appFolderId)
-                ?: throw Exception("Failed to create book folder for ${book.uuid}")
+                ?: throw Exception("Failed to create book folder for ${currentBook.uuid}")
 
             // Upload book file on first sync
-            if (book.driveFileId == null) {
-                val fileName = "${book.title}.${book.format.name.lowercase()}"
-                val localFile = File(book.filePath)
+            if (currentBook.driveFileId == null) {
+                val fileName = "${currentBook.title}.${currentBook.format.name.lowercase()}"
+                val localFile = File(currentBook.filePath)
                 if (localFile.exists()) {
-                    val mimeType = when (book.format) {
+                    Log.d(TAG, "pushToRemote: uploading book file $fileName, size=${localFile.length()} bytes")
+                    val mimeType = when (currentBook.format) {
                         BookFormat.EPUB -> "application/epub+zip"
                         BookFormat.TXT -> "text/plain"
                     }
                     val fileId = driveClient.uploadBookFile(bookFolderId, fileName, localFile, mimeType)
                     if (fileId != null) {
-                        bookRepository.updateBook(book.copy(driveFileId = fileId))
+                        currentBook = currentBook.copy(driveFileId = fileId)
+                        bookRepository.updateBook(currentBook)
                     }
                 }
             }
 
             // Collect ALL data including deleted items
-            val progress = readingProgressRepository.getProgressIncludingDeleted(book.uuid)
-            val bookmarks = bookmarkRepository.getAllBookmarksForBookNow(book.uuid)
-            val highlights = highlightRepository.getAllHighlightsForBookNow(book.uuid)
-            val notes = noteRepository.getAllNotesForBookNow(book.uuid)
+            val progress = readingProgressRepository.getProgressIncludingDeleted(currentBook.uuid)
+            val bookmarks = bookmarkRepository.getAllBookmarksForBookNow(currentBook.uuid)
+            val highlights = highlightRepository.getAllHighlightsForBookNow(currentBook.uuid)
+            val notes = noteRepository.getAllNotesForBookNow(currentBook.uuid)
+
+            Log.d(TAG, "pushToRemote: progress for ${currentBook.uuid}: ${progress?.percentage}, bookmarks=${bookmarks.size}, highlights=${highlights.size}, notes=${notes.size}")
 
             val now = System.currentTimeMillis()
-            val updatedBook = book.copy(updatedAt = now)
+            val updatedBook = currentBook.copy(updatedAt = now)
             val metadata = buildBookMetadata(updatedBook, progress, bookmarks, highlights, notes)
             val metadataJson = gson.toJson(metadata)
-            driveClient.uploadFile(
+            val uploadResult = driveClient.uploadFile(
                 bookFolderId,
                 "metadata.json",
                 metadataJson.toByteArray(),
                 "application/json"
             )
+            Log.d(TAG, "pushToRemote: metadata upload result=$uploadResult, folderId=$bookFolderId, jsonLen=${metadataJson.length}")
 
-            // Update lastSyncedAt
+            // Update lastSyncedAt (preserves driveFileId from currentBook)
             bookRepository.updateBook(updatedBook.copy(lastSyncedAt = now))
         }
     }
@@ -152,14 +162,25 @@ class SyncService @Inject constructor(
         val appFolderId = driveClient.getAppFolderId()
         val remoteFolders = driveClient.listFilesInFolder(appFolderId)
         Log.d(TAG, "pullFromRemote: appFolderId=$appFolderId, remoteFolders=${remoteFolders.size}")
+        remoteFolders.forEach { (name, id) ->
+            Log.d(TAG, "pullFromRemote: found remote folder: name=$name, id=$id")
+        }
 
         for ((folderName, folderId) in remoteFolders) {
             if (!folderName.startsWith("book_")) continue
+            Log.d(TAG, "pullFromRemote: processing folder=$folderName, folderId=$folderId")
 
             // Download metadata.json from this folder
             val metadataFileId = driveClient.findFileInFolder(folderId, "metadata.json")
-                ?: continue
-            val metadataBytes = driveClient.downloadFile(metadataFileId) ?: continue
+            if (metadataFileId == null) {
+                Log.w(TAG, "pullFromRemote: no metadata.json found in folder $folderName")
+                continue
+            }
+            val metadataBytes = driveClient.downloadFile(metadataFileId)
+            if (metadataBytes == null) {
+                Log.w(TAG, "pullFromRemote: failed to download metadata.json from folder $folderName")
+                continue
+            }
             val metadataJson = String(metadataBytes)
             val metadata = try {
                 gson.fromJson(metadataJson, BookMetadata::class.java)
@@ -169,17 +190,28 @@ class SyncService @Inject constructor(
             }
 
             // Extract bookUuid from folder name: "book_{uuid}"
-            val bookUuid = folderName.removePrefix("book_")
+            val bookUuid = metadata.bookUuid ?: folderName.removePrefix("book_")
+            Log.d(TAG, "pullFromRemote: folder=$folderName, bookUuid=$bookUuid, metadata.bookUuid=${metadata.bookUuid}, metadata.isDeleted=${metadata.isDeleted}")
+
+            // Skip old-format folders (pre-UUID, numeric IDs like book_1, book_2)
+            if (metadata.bookUuid == null) {
+                Log.w(TAG, "pullFromRemote: skipping old-format folder $folderName (no bookUuid in metadata)")
+                continue
+            }
 
             // Find local book by uuid
             val localBook = bookRepository.getBookByUuid(bookUuid)
 
             if (localBook == null && !metadata.isDeleted) {
                 // New book from remote — download it
+                Log.d(TAG, "pullFromRemote: new book from remote, downloading: ${metadata.title}")
                 downloadBookFromRemote(folderId, folderName, metadata)
             } else if (localBook != null) {
                 // Existing local book — merge
+                Log.d(TAG, "pullFromRemote: existing local book, merging: ${metadata.title}")
                 mergeLocalBook(localBook, metadata, folderId)
+            } else {
+                Log.d(TAG, "pullFromRemote: skipping deleted book or already exists: bookUuid=$bookUuid")
             }
         }
     }
@@ -224,7 +256,26 @@ class SyncService @Inject constructor(
         val currentBook = bookRepository.getBookByUuid(localBook.uuid)
         if (currentBook?.isDeleted == true) return
 
+        // Extract cover if missing and book file is EPUB
+        if (currentBook != null && (currentBook.coverPath == null || !File(currentBook.coverPath).exists())) {
+            if (currentBook.format == BookFormat.EPUB) {
+                val epubFile = File(currentBook.filePath)
+                if (epubFile.exists()) {
+                    try {
+                        val coverPath = epubParser.parse(epubFile).coverPath
+                        if (coverPath != null) {
+                            bookRepository.updateBook(currentBook.copy(coverPath = coverPath))
+                            Log.d(TAG, "mergeLocalBook: extracted cover for ${currentBook.uuid}")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "mergeLocalBook: failed to extract cover for ${currentBook.uuid}", e)
+                    }
+                }
+            }
+        }
+
         // 2. Merge progress (special: take higher percentage)
+        Log.d(TAG, "mergeLocalBook: remote progress for ${localBook.uuid}: ${metadata.progress?.percentage}, uuid=${metadata.progress?.uuid}")
         metadata.progress?.let { remoteProgress ->
             mergeProgress(localBook.uuid, remoteProgress)
         }
@@ -240,6 +291,8 @@ class SyncService @Inject constructor(
 
     private suspend fun mergeProgress(bookUuid: String, remote: ProgressMetadata) {
         val local = readingProgressRepository.getProgressIncludingDeleted(bookUuid)
+        // Always use local uuid to avoid duplicate records (progress is 1-per-book)
+        val progressUuid = local?.uuid ?: remote.uuid
 
         when {
             // Remote deleted, local not deleted -> keep local
@@ -251,7 +304,7 @@ class SyncService @Inject constructor(
             (local == null || local.isDeleted) && !remote.isDeleted -> {
                 readingProgressRepository.saveProgress(
                     ReadingProgress(
-                        uuid = remote.uuid,
+                        uuid = progressUuid,
                         bookUuid = bookUuid,
                         chapterIndex = remote.chapterIndex,
                         charOffset = remote.charOffset,
@@ -263,7 +316,7 @@ class SyncService @Inject constructor(
                 recordLog(
                     bookUuid = bookUuid,
                     entityType = "progress",
-                    entityUuid = remote.uuid,
+                    entityUuid = progressUuid,
                     action = "restore_remote",
                     localUpdatedAt = local?.updatedAt,
                     remoteUpdatedAt = remote.updatedAt
@@ -277,7 +330,7 @@ class SyncService @Inject constructor(
                 ) {
                     readingProgressRepository.saveProgress(
                         ReadingProgress(
-                            uuid = remote.uuid,
+                            uuid = progressUuid,
                             bookUuid = bookUuid,
                             chapterIndex = remote.chapterIndex,
                             charOffset = remote.charOffset,
@@ -289,7 +342,7 @@ class SyncService @Inject constructor(
                     recordLog(
                         bookUuid = bookUuid,
                         entityType = "progress",
-                        entityUuid = remote.uuid,
+                        entityUuid = progressUuid,
                         action = "update_remote",
                         localUpdatedAt = local.updatedAt,
                         remoteUpdatedAt = remote.updatedAt
@@ -648,17 +701,27 @@ class SyncService @Inject constructor(
         folderName: String,
         metadata: BookMetadata
     ) {
+        Log.d(TAG, "downloadBookFromRemote: folderId=$folderId, bookUuid=${metadata.bookUuid}, title=${metadata.title}")
+
         // 1. Find and download the book file from Drive
         val filesInFolder = driveClient.listFilesInFolder(folderId)
+        Log.d(TAG, "downloadBookFromRemote: files in folder: ${filesInFolder.map { it.first }}")
         val bookFileEntry = filesInFolder.firstOrNull { (name, _) ->
             !name.startsWith("metadata") && (name.endsWith(".epub") || name.endsWith(".txt"))
-        } ?: return
+        }
+        if (bookFileEntry == null) {
+            Log.w(TAG, "downloadBookFromRemote: no book file found in folder $folderName")
+            return
+        }
 
         val extension = bookFileEntry.first.substringAfterLast('.').lowercase()
         val format = when (extension) {
             "epub" -> BookFormat.EPUB
             "txt" -> BookFormat.TXT
-            else -> return
+            else -> {
+                Log.w(TAG, "downloadBookFromRemote: unsupported format: $extension")
+                return
+            }
         }
 
         // 2. Download to local books directory
@@ -666,16 +729,30 @@ class SyncService @Inject constructor(
         val localFileName = "${UUID.randomUUID()}.$extension"
         val localFile = File(booksDir, localFileName)
         driveClient.downloadFileTo(bookFileEntry.second, localFile)
-        if (!localFile.exists()) return
+        if (!localFile.exists()) {
+            Log.e(TAG, "downloadBookFromRemote: download failed, file not created: ${localFile.absolutePath}")
+            return
+        }
+        Log.d(TAG, "downloadBookFromRemote: downloaded file ${localFile.absolutePath}, size=${localFile.length()}")
 
-        // 3. Create book record via repository using remote uuid
+        // 3. Extract cover image from EPUB
+        val coverPath = if (format == BookFormat.EPUB) {
+            try {
+                epubParser.parse(localFile).coverPath
+            } catch (e: Exception) {
+                Log.w(TAG, "downloadBookFromRemote: failed to extract cover", e)
+                null
+            }
+        } else null
+
+        // 4. Create book record via repository using remote uuid
         val book = Book(
             uuid = metadata.bookUuid,
             title = metadata.title,
             author = metadata.author,
             filePath = localFile.absolutePath,
             format = format,
-            coverPath = metadata.coverPath,
+            coverPath = coverPath,
             fileSize = localFile.length(),
             lastSyncedAt = System.currentTimeMillis(),
             driveFileId = folderId

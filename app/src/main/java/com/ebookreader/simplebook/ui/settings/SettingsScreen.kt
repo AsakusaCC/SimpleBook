@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -66,7 +65,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text(strings.settings) },
                 navigationIcon = {
-                    if (navController != null) {
+                    if (navController != null && navController.previousBackStackEntry != null) {
                         IconButton(onClick = { navController.navigateUp() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                         }
@@ -83,34 +82,6 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Language
-            Text(strings.language, style = MaterialTheme.typography.titleMedium)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                listOf("zh" to strings.chinese, "en" to strings.english).forEach { (code, name) ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .border(
-                                    width = if (settings.language == code) 3.dp else 1.dp,
-                                    color = if (settings.language == code) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .clickable { viewModel.updateLanguage(code) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(name, style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                }
-            }
-
             // Font Size
             Text(strings.fontSize, style = MaterialTheme.typography.titleMedium)
             Text("${settings.fontSize.toInt()} sp", style = MaterialTheme.typography.bodyMedium)

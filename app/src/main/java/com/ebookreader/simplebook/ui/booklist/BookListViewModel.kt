@@ -61,7 +61,7 @@ class BookListViewModel @Inject constructor(
 
     fun deleteBook(book: Book) {
         viewModelScope.launch {
-            bookService.deleteBook(book)
+            bookService.softDeleteBook(book.uuid)
         }
     }
 }
