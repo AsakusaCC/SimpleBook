@@ -37,6 +37,9 @@ class BookRepositoryImpl @Inject constructor(
     override suspend fun softDeleteBook(uuid: String) =
         bookDao.softDelete(uuid)
 
+    override suspend fun getAllBooksIncludingDeleted(): List<Book> =
+        bookDao.getAllBooksIncludingDeleted().map { it.toDomain() }
+
     private fun BookEntity.toDomain() = Book(
         uuid = uuid, title = title, author = author, filePath = filePath,
         format = BookFormat.valueOf(format), coverPath = coverPath, fileSize = fileSize,

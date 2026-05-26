@@ -11,4 +11,5 @@ interface BookRepository {
     suspend fun addBook(book: Book): String
     suspend fun updateBook(book: Book)
     suspend fun softDeleteBook(uuid: String)
+    suspend fun getAllBooksIncludingDeleted(): List<Book>
 }
