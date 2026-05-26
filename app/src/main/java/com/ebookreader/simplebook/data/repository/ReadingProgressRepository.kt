@@ -10,32 +10,23 @@ import javax.inject.Singleton
 class ReadingProgressRepository @Inject constructor(
     private val readingProgressDao: ReadingProgressDao
 ) {
-    suspend fun getProgress(bookId: Long): ReadingProgress? =
-        readingProgressDao.getProgress(bookId)?.toDomain()
+    suspend fun getProgress(bookUuid: String): ReadingProgress? =
+        readingProgressDao.getProgress(bookUuid)?.toDomain()
+
+    suspend fun getProgressIncludingDeleted(bookUuid: String): ReadingProgress? =
+        readingProgressDao.getProgressIncludingDeleted(bookUuid)?.toDomain()
 
     suspend fun saveProgress(progress: ReadingProgress) {
         readingProgressDao.upsert(progress.toEntity())
     }
 
     private fun ReadingProgressEntity.toDomain() = ReadingProgress(
-        id = id,
-        bookId = bookId,
-        chapterIndex = chapterIndex,
-        charOffset = charOffset,
-        percentage = percentage,
-        updatedAt = updatedAt,
-        syncVersion = syncVersion,
-        lastSyncedAt = lastSyncedAt
+        uuid = uuid, bookUuid = bookUuid, chapterIndex = chapterIndex,
+        charOffset = charOffset, percentage = percentage, updatedAt = updatedAt, isDeleted = isDeleted
     )
 
     private fun ReadingProgress.toEntity() = ReadingProgressEntity(
-        id = id,
-        bookId = bookId,
-        chapterIndex = chapterIndex,
-        charOffset = charOffset,
-        percentage = percentage,
-        updatedAt = updatedAt,
-        syncVersion = syncVersion,
-        lastSyncedAt = lastSyncedAt
+        uuid = uuid, bookUuid = bookUuid, chapterIndex = chapterIndex,
+        charOffset = charOffset, percentage = percentage, updatedAt = updatedAt, isDeleted = isDeleted
     )
 }

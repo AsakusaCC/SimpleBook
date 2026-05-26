@@ -20,48 +20,34 @@ class BookRepositoryImpl @Inject constructor(
     override suspend fun getAllBooksNow(): List<Book> =
         bookDao.getAllBooksNow().map { it.toDomain() }
 
-    override suspend fun getBookById(id: Long): Book? =
-        bookDao.getBookById(id)?.toDomain()
+    override suspend fun getBookByUuid(uuid: String): Book? =
+        bookDao.getBookByUuid(uuid)?.toDomain()
 
     override suspend fun getBookByDriveFileId(driveFileId: String): Book? =
         bookDao.getBookByDriveFileId(driveFileId)?.toDomain()
 
-    override suspend fun addBook(book: Book): Long =
+    override suspend fun addBook(book: Book): String {
         bookDao.insert(book.toEntity())
+        return book.uuid
+    }
 
     override suspend fun updateBook(book: Book) =
         bookDao.update(book.toEntity())
 
-    override suspend fun deleteBook(book: Book) =
-        bookDao.delete(book.toEntity())
+    override suspend fun softDeleteBook(uuid: String) =
+        bookDao.softDelete(uuid)
 
     private fun BookEntity.toDomain() = Book(
-        id = id,
-        title = title,
-        author = author,
-        filePath = filePath,
-        format = BookFormat.valueOf(format),
-        coverPath = coverPath,
-        fileSize = fileSize,
-        addedAt = addedAt,
-        lastReadAt = lastReadAt,
-        syncVersion = syncVersion,
-        lastSyncedAt = lastSyncedAt,
-        driveFileId = driveFileId
+        uuid = uuid, title = title, author = author, filePath = filePath,
+        format = BookFormat.valueOf(format), coverPath = coverPath, fileSize = fileSize,
+        addedAt = addedAt, lastReadAt = lastReadAt, updatedAt = updatedAt,
+        isDeleted = isDeleted, lastSyncedAt = lastSyncedAt, driveFileId = driveFileId
     )
 
     private fun Book.toEntity() = BookEntity(
-        id = id,
-        title = title,
-        author = author,
-        filePath = filePath,
-        format = format.name,
-        coverPath = coverPath,
-        fileSize = fileSize,
-        addedAt = addedAt,
-        lastReadAt = lastReadAt,
-        syncVersion = syncVersion,
-        lastSyncedAt = lastSyncedAt,
-        driveFileId = driveFileId
+        uuid = uuid, title = title, author = author, filePath = filePath,
+        format = format.name, coverPath = coverPath, fileSize = fileSize,
+        addedAt = addedAt, lastReadAt = lastReadAt, updatedAt = updatedAt,
+        isDeleted = isDeleted, lastSyncedAt = lastSyncedAt, driveFileId = driveFileId
     )
 }

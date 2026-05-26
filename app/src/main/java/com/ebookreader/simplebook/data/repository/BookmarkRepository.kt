@@ -12,40 +12,29 @@ import javax.inject.Singleton
 class BookmarkRepository @Inject constructor(
     private val bookmarkDao: BookmarkDao
 ) {
-    fun getBookmarksForBook(bookId: Long): Flow<List<Bookmark>> =
-        bookmarkDao.getBookmarksForBook(bookId).map { list -> list.map { it.toDomain() } }
+    fun getBookmarksForBook(bookUuid: String): Flow<List<Bookmark>> =
+        bookmarkDao.getBookmarksForBook(bookUuid).map { list -> list.map { it.toDomain() } }
 
-    suspend fun getBookmarksForBookNow(bookId: Long): List<Bookmark> =
-        bookmarkDao.getBookmarksForBookNow(bookId).map { it.toDomain() }
+    suspend fun getBookmarksForBookNow(bookUuid: String): List<Bookmark> =
+        bookmarkDao.getBookmarksForBookNow(bookUuid).map { it.toDomain() }
+
+    suspend fun getAllBookmarksForBookNow(bookUuid: String): List<Bookmark> =
+        bookmarkDao.getAllBookmarksForBookNow(bookUuid).map { it.toDomain() }
 
     fun getAllBookmarks(): Flow<List<Bookmark>> =
         bookmarkDao.getAllBookmarks().map { list -> list.map { it.toDomain() } }
 
-    suspend fun addBookmark(bookmark: Bookmark): Long =
-        bookmarkDao.insert(bookmark.toEntity())
+    suspend fun addBookmark(bookmark: Bookmark) { bookmarkDao.insert(bookmark.toEntity()) }
 
-    suspend fun deleteBookmark(bookmark: Bookmark) =
-        bookmarkDao.delete(bookmark.toEntity())
+    suspend fun softDeleteBookmark(uuid: String) { bookmarkDao.softDelete(uuid) }
 
     private fun BookmarkEntity.toDomain() = Bookmark(
-        id = id,
-        bookId = bookId,
-        chapterIndex = chapterIndex,
-        charOffset = charOffset,
-        name = name,
-        createdAt = createdAt,
-        syncVersion = syncVersion,
-        lastSyncedAt = lastSyncedAt
+        uuid = uuid, bookUuid = bookUuid, chapterIndex = chapterIndex,
+        charOffset = charOffset, name = name, createdAt = createdAt, updatedAt = updatedAt, isDeleted = isDeleted
     )
 
     private fun Bookmark.toEntity() = BookmarkEntity(
-        id = id,
-        bookId = bookId,
-        chapterIndex = chapterIndex,
-        charOffset = charOffset,
-        name = name,
-        createdAt = createdAt,
-        syncVersion = syncVersion,
-        lastSyncedAt = lastSyncedAt
+        uuid = uuid, bookUuid = bookUuid, chapterIndex = chapterIndex,
+        charOffset = charOffset, name = name, createdAt = createdAt, updatedAt = updatedAt, isDeleted = isDeleted
     )
 }

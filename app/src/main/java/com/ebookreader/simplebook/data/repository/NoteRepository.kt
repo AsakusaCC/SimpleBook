@@ -12,39 +12,31 @@ import javax.inject.Singleton
 class NoteRepository @Inject constructor(
     private val noteDao: NoteDao
 ) {
-    fun getNotesForBook(bookId: Long): Flow<List<Note>> =
-        noteDao.getNotesForBook(bookId).map { list -> list.map { it.toDomain() } }
+    fun getNotesForBook(bookUuid: String): Flow<List<Note>> =
+        noteDao.getNotesForBook(bookUuid).map { list -> list.map { it.toDomain() } }
 
-    suspend fun getNotesForBookNow(bookId: Long): List<Note> =
-        noteDao.getNotesForBookNow(bookId).map { it.toDomain() }
+    suspend fun getNotesForBookNow(bookUuid: String): List<Note> =
+        noteDao.getNotesForBookNow(bookUuid).map { it.toDomain() }
+
+    suspend fun getAllNotesForBookNow(bookUuid: String): List<Note> =
+        noteDao.getAllNotesForBookNow(bookUuid).map { it.toDomain() }
 
     fun getAllNotes(): Flow<List<Note>> =
         noteDao.getAllNotes().map { list -> list.map { it.toDomain() } }
 
-    suspend fun addNote(note: Note): Long = noteDao.insert(note.toEntity())
-    suspend fun deleteNote(note: Note) = noteDao.delete(note.toEntity())
+    suspend fun addNote(note: Note) { noteDao.insert(note.toEntity()) }
+
+    suspend fun softDeleteNote(uuid: String) { noteDao.softDelete(uuid) }
 
     private fun NoteEntity.toDomain() = Note(
-        id = id,
-        bookId = bookId,
-        highlightId = highlightId,
-        chapterIndex = chapterIndex,
-        charOffset = charOffset,
-        content = content,
-        createdAt = createdAt,
-        syncVersion = syncVersion,
-        lastSyncedAt = lastSyncedAt
+        uuid = uuid, bookUuid = bookUuid, highlightUuid = highlightUuid,
+        chapterIndex = chapterIndex, charOffset = charOffset, content = content,
+        createdAt = createdAt, updatedAt = updatedAt, isDeleted = isDeleted
     )
 
     private fun Note.toEntity() = NoteEntity(
-        id = id,
-        bookId = bookId,
-        highlightId = highlightId,
-        chapterIndex = chapterIndex,
-        charOffset = charOffset,
-        content = content,
-        createdAt = createdAt,
-        syncVersion = syncVersion,
-        lastSyncedAt = lastSyncedAt
+        uuid = uuid, bookUuid = bookUuid, highlightUuid = highlightUuid,
+        chapterIndex = chapterIndex, charOffset = charOffset, content = content,
+        createdAt = createdAt, updatedAt = updatedAt, isDeleted = isDeleted
     )
 }
