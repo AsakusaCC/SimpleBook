@@ -76,12 +76,10 @@ class SyncService @Inject constructor(
         syncMutex.withLock {
             try {
                 _syncStatus.value = SyncStatus.Syncing
-                // Push first so local deletions are uploaded before pulling remote state.
-                // This prevents the pull from re-adding locally deleted items.
-                Log.d(TAG, "syncAll: starting pushToRemote")
-                pushToRemote()
                 Log.d(TAG, "syncAll: starting pullFromRemote")
                 pullFromRemote()
+                Log.d(TAG, "syncAll: starting pushToRemote")
+                pushToRemote()
                 refreshConflictCount()
                 val now = System.currentTimeMillis()
                 _lastSyncedAt.value = now
@@ -455,12 +453,16 @@ class SyncService @Inject constructor(
         )
 
         // Apply remote bookmarks (upsert by matching chapter + offset)
+        // Only add new items created after our last sync to avoid re-adding locally deleted items
+        val lastSynced = localBook.lastSyncedAt ?: 0L
         val localBookmarks = bookmarkRepository.getBookmarksForBookNow(localBook.id)
         for (bm in metadata.bookmarks) {
             val existing = localBookmarks.find { lb ->
                 lb.chapterIndex == bm.chapterIndex && lb.charOffset == bm.charOffset
             }
             if (existing == null) {
+                // Skip if this item existed before our last sync — it was likely locally deleted
+                if (bm.createdAt <= lastSynced) continue
                 bookmarkRepository.addBookmark(
                     Bookmark(
                         bookId = localBook.id,
@@ -491,6 +493,7 @@ class SyncService @Inject constructor(
                     lh.endOffset == hl.endOffset
             }
             if (existing == null) {
+                if (hl.createdAt <= lastSynced) continue
                 highlightRepository.addHighlight(
                     Highlight(
                         bookId = localBook.id,
@@ -523,6 +526,7 @@ class SyncService @Inject constructor(
                 ln.chapterIndex == nt.chapterIndex && ln.charOffset == nt.charOffset
             }
             if (existing == null) {
+                if (nt.createdAt <= lastSynced) continue
                 noteRepository.addNote(
                     Note(
                         bookId = localBook.id,
