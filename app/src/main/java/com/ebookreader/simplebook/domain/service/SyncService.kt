@@ -327,13 +327,13 @@ class SyncService @Inject constructor(
             localBook.lastReadAt!! > (localBook.lastSyncedAt ?: 0)
 
         if (metadata.syncVersion > localVersion) {
+            // Always apply remote changes: additions, updates, deletions
+            applyRemoteAnnotations(localBook, metadata, driveFolderId)
+            applyRemoteDeletions(localBook, metadata)
+            // Record conflicts for user review if local has unsynced changes
             if (localHasChanges) {
                 detectConflicts(localBook, metadata)
-            } else {
-                applyRemoteAnnotations(localBook, metadata, driveFolderId)
             }
-            // Always apply remote deletions regardless of conflict state
-            applyRemoteDeletions(localBook, metadata)
         }
     }
 
