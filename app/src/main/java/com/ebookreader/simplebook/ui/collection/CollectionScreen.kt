@@ -476,7 +476,7 @@ private fun EmptyState(message: String) {
 // region — Utility
 
 private fun formatRelativeTime(timestamp: Long): String {
-    val diff = System.currentTimeMillis() - timestamp
+    val diff = maxOf(0L, System.currentTimeMillis() - timestamp)
     return when {
         diff < 60_000L -> "刚刚"
         diff < 3_600_000L -> "${diff / 60_000L}分钟前"
