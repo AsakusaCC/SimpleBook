@@ -14,7 +14,7 @@ import com.ebookreader.simplebook.ui.bookmark.BookmarkScreen
 import com.ebookreader.simplebook.ui.note.NoteScreen
 import com.ebookreader.simplebook.ui.reader.ReaderScreen
 import com.ebookreader.simplebook.ui.settings.SettingsScreen
-import com.ebookreader.simplebook.ui.sync.SyncScreen
+import com.ebookreader.simplebook.ui.sync.SyncLogScreen
 import com.ebookreader.simplebook.ui.sync.SyncViewModel
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -43,7 +43,7 @@ fun SimpleBookNavHost(
             BookListScreen(
                 windowWidthSizeClass = windowSizeClass.widthSizeClass,
                 onBookClick = { book: Book ->
-                    navController.navigate(Screen.Reader.createRoute(book.id))
+                    navController.navigate(Screen.Reader.createRoute(book.uuid))
                 },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
@@ -54,7 +54,7 @@ fun SimpleBookNavHost(
         composable(
             route = Screen.Reader.route,
             arguments = listOf(
-                navArgument("bookId") { type = NavType.LongType },
+                navArgument("bookUuid") { type = NavType.StringType },
                 navArgument("charOffset") {
                     type = NavType.LongType
                     defaultValue = 0L
@@ -65,9 +65,9 @@ fun SimpleBookNavHost(
                 }
             )
         ) { backStackEntry ->
-            val bookId = backStackEntry.arguments?.getLong("bookId") ?: 0L
+            val bookUuid = backStackEntry.arguments?.getString("bookUuid") ?: ""
             ReaderScreen(
-                bookId = bookId,
+                bookId = bookUuid,
                 navController = navController,
                 windowWidthSizeClass = windowSizeClass.widthSizeClass
             )
@@ -76,21 +76,21 @@ fun SimpleBookNavHost(
         composable(
             route = Screen.Bookmark.route,
             arguments = listOf(
-                navArgument("bookId") { type = NavType.LongType }
+                navArgument("bookUuid") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val bookId = backStackEntry.arguments?.getLong("bookId") ?: 0L
-            BookmarkScreen(bookId = bookId)
+            val bookUuid = backStackEntry.arguments?.getString("bookUuid") ?: ""
+            BookmarkScreen(bookId = bookUuid)
         }
 
         composable(
             route = Screen.NoteList.route,
             arguments = listOf(
-                navArgument("bookId") { type = NavType.LongType }
+                navArgument("bookUuid") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val bookId = backStackEntry.arguments?.getLong("bookId") ?: 0L
-            NoteScreen(bookId = bookId)
+            val bookUuid = backStackEntry.arguments?.getString("bookUuid") ?: ""
+            NoteScreen(bookId = bookUuid)
         }
 
         composable(Screen.Settings.route) {
@@ -100,8 +100,8 @@ fun SimpleBookNavHost(
             )
         }
 
-        composable(Screen.Sync.route) {
-            SyncScreen(onNavigateBack = { navController.popBackStack() })
+        composable(Screen.SyncLog.route) {
+            SyncLogScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }
