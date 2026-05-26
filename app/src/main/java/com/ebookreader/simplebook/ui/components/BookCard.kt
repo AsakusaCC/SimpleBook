@@ -83,35 +83,16 @@ fun BookCard(
 
                 // Reading progress overlay
                 if (percentage > 0.0) {
-                    Box(
+                    Text(
+                        text = "已阅读${(percentage * 100).toInt()}%",
+                        color = Color.White,
+                        fontSize = 11.sp,
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .fillMaxWidth()
-                    ) {
-                        // Background track
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .background(Color.Black.copy(alpha = 0.4f))
-                        )
-                        // Foreground progress bar
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(percentage.toFloat())
-                                .height(4.dp)
-                                .background(Color.White)
-                        )
-                        // Percentage text
-                        Text(
-                            text = "${(percentage * 100).toInt()}%",
-                            color = Color.White,
-                            fontSize = 9.sp,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(end = 2.dp, bottom = 4.dp)
-                        )
-                    }
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .padding(horizontal = 6.dp, vertical = 4.dp)
+                    )
                 }
             }
 

@@ -36,14 +36,28 @@ class AuthManager @Inject constructor(
 
     val signInIntent: Intent get() = signInClient.signInIntent
 
+    private val _signInError = MutableStateFlow<String?>(null)
+    val signInError: StateFlow<String?> = _signInError.asStateFlow()
+
     init {
         _signedInAccount.value = GoogleSignIn.getLastSignedInAccount(context)
     }
 
-    suspend fun handleSignInResult(data: Intent) {
-        val task = GoogleSignIn.getSignedInAccountFromIntent(data)
-        val account = task.getResult(ApiException::class.java)
-        _signedInAccount.value = account
+    suspend fun handleSignInResult(data: Intent): Result<GoogleSignInAccount> {
+        return try {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+            val account = task.getResult(ApiException::class.java)
+            _signedInAccount.value = account
+            _signInError.value = null
+            Result.success(account)
+        } catch (e: ApiException) {
+            _signInError.value = "${e.statusCode}: ${e.message}"
+            Result.failure(e)
+        }
+    }
+
+    fun clearSignInError() {
+        _signInError.value = null
     }
 
     fun signOut() {

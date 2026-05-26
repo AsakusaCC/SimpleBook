@@ -8,8 +8,10 @@ import com.ebookreader.simplebook.domain.model.ReaderSettings
 import com.ebookreader.simplebook.domain.service.SyncService
 import com.ebookreader.simplebook.domain.service.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -30,6 +32,8 @@ class SettingsViewModel @Inject constructor(
     val isSignedIn: Boolean get() = authManager.isSignedIn
 
     val accountEmail: String? get() = authManager.signedInAccount.value?.email
+
+    val signInError: StateFlow<String?> = authManager.signInError
 
     fun updateFontSize(size: Float) {
         viewModelScope.launch { settingsDataStore.updateFontSize(size) }

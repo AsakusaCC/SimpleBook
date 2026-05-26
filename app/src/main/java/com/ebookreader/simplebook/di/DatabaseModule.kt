@@ -29,7 +29,9 @@ object DatabaseModule {
             context,
             SimpleBookDatabase::class.java,
             "simplebook.db"
-        ).addMigrations(SimpleBookDatabase.MIGRATION_1_2).build()
+        ).addMigrations(SimpleBookDatabase.MIGRATION_1_2)
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides
     fun provideBookDao(db: SimpleBookDatabase): BookDao = db.bookDao()

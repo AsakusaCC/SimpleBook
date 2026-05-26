@@ -48,8 +48,12 @@ class MainActivity : ComponentActivity() {
                     val signInLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.StartActivityForResult()
                     ) { result ->
-                        if (result.resultCode == RESULT_OK && result.data != null) {
-                            syncViewModel.handleSignInResult(result.data!!)
+                        val data = result.data
+                        if (data != null) {
+                            syncViewModel.handleSignInResult(data)
+                        } else {
+                            // Result data is null - sign-in was cancelled or failed
+                            syncViewModel.setSignInError("Sign-in cancelled or returned no data (code=${result.resultCode})")
                         }
                     }
 

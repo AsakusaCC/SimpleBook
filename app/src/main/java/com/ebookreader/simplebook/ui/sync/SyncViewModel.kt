@@ -9,8 +9,10 @@ import com.ebookreader.simplebook.data.remote.AuthManager
 import com.ebookreader.simplebook.domain.service.SyncService
 import com.ebookreader.simplebook.domain.service.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -37,10 +39,27 @@ class SyncViewModel @Inject constructor(
 
     fun getSignInIntent(): Intent = authManager.signInIntent
 
+    private val _signInError = MutableStateFlow<String?>(null)
+    val signInError: StateFlow<String?> = _signInError.asStateFlow()
+
     fun handleSignInResult(data: Intent) {
         viewModelScope.launch {
-            authManager.handleSignInResult(data)
+            val result = authManager.handleSignInResult(data)
+            if (result.isFailure) {
+                val exception = result.exceptionOrNull()
+                _signInError.value = exception?.message ?: "Sign-in failed"
+            } else {
+                _signInError.value = null
+            }
         }
+    }
+
+    fun clearSignInError() {
+        _signInError.value = null
+    }
+
+    fun setSignInError(message: String) {
+        _signInError.value = message
     }
 
     fun syncNow() {

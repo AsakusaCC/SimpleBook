@@ -233,7 +233,7 @@ private fun ReaderPane(
                     TxtReaderView(
                         paragraphs = currentChapter.content.split("\n"),
                         textStyle = textStyle,
-                        onScrollPositionChanged = { /* position tracking */ },
+                        onScrollPositionChanged = onScrollPercentageChanged,
                         onTap = onToggleToolbar,
                         hasNextChapter = currentChapterIndex < chapters.size - 1,
                         onNextChapter = onNextChapter,

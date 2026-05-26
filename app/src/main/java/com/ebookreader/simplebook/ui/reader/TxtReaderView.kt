@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 fun TxtReaderView(
     paragraphs: List<String>,
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
-    onScrollPositionChanged: (Int) -> Unit,
+    onScrollPositionChanged: (Float) -> Unit,
     onTap: () -> Unit = {},
     hasNextChapter: Boolean = false,
     onNextChapter: () -> Unit = {},
@@ -128,8 +128,13 @@ fun TxtReaderView(
         )
     }
 
-    LaunchedEffect(listState) {
+    LaunchedEffect(listState, paragraphs) {
         snapshotFlow { listState.firstVisibleItemIndex }
-            .collect { index -> onScrollPositionChanged(index) }
+            .collect { index ->
+                val pct = if (paragraphs.isNotEmpty()) {
+                    index.toFloat() / paragraphs.size.toFloat()
+                } else 0f
+                onScrollPositionChanged(pct)
+            }
     }
 }

@@ -41,19 +41,23 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.ebookreader.simplebook.domain.model.getStrings
 import com.ebookreader.simplebook.domain.service.SyncStatus
+import com.ebookreader.simplebook.ui.sync.SyncViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController? = null,
     onSignInClick: (() -> Unit)? = null,
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel(),
+    syncViewModel: SyncViewModel = hiltViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
     val strings = remember(settings.language) { getStrings(settings.language) }
     val syncStatus by viewModel.syncStatus.collectAsState()
-    val isSignedIn = viewModel.isSignedIn
-    val accountEmail = viewModel.accountEmail
+    val account by viewModel.authManager.signedInAccount.collectAsState()
+    val isSignedIn = account != null
+    val accountEmail = account?.email
+    val signInError by viewModel.signInError.collectAsState()
 
     Scaffold(
         topBar = {
@@ -197,6 +201,14 @@ fun SettingsScreen(
                     modifier = Modifier.padding(top = 8.dp)
                 ) {
                     Text(strings.syncSignIn)
+                }
+                if (signInError != null) {
+                    Text(
+                        text = "登录失败: $signInError",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
 
