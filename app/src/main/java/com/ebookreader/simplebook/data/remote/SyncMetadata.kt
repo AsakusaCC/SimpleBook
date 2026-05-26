@@ -1,18 +1,15 @@
 package com.ebookreader.simplebook.data.remote
 
-data class SyncManifest(
-    val books: Map<String, String> = emptyMap()
-)
-
 data class BookMetadata(
-    val bookId: Long,
+    val version: Int = 3,
+    val bookUuid: String,
     val title: String,
     val author: String,
     val format: String,
     val fileSize: Long = 0,
     val coverPath: String? = null,
-    val syncVersion: Long = 1,
     val updatedAt: Long,
+    val isDeleted: Boolean = false,
     val progress: ProgressMetadata? = null,
     val bookmarks: List<BookmarkMetadata> = emptyList(),
     val highlights: List<HighlightMetadata> = emptyList(),
@@ -20,36 +17,43 @@ data class BookMetadata(
 )
 
 data class ProgressMetadata(
+    val uuid: String,
     val chapterIndex: Int,
     val charOffset: Long,
     val percentage: Double,
-    val syncVersion: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val isDeleted: Boolean = false
 )
 
 data class BookmarkMetadata(
+    val uuid: String,
     val chapterIndex: Int,
     val charOffset: Long,
     val name: String,
-    val syncVersion: Long,
-    val createdAt: Long
+    val createdAt: Long,
+    val updatedAt: Long,
+    val isDeleted: Boolean = false
 )
 
 data class HighlightMetadata(
+    val uuid: String,
     val chapterIndex: Int,
     val startOffset: Long,
     val endOffset: Long,
     val color: Int,
     val note: String?,
-    val syncVersion: Long,
-    val createdAt: Long
+    val createdAt: Long,
+    val updatedAt: Long,
+    val isDeleted: Boolean = false
 )
 
 data class NoteMetadata(
-    val highlightId: Long?,
+    val uuid: String,
+    val highlightUuid: String? = null,
     val chapterIndex: Int,
     val charOffset: Long,
     val content: String,
-    val syncVersion: Long,
-    val createdAt: Long
+    val createdAt: Long,
+    val updatedAt: Long,
+    val isDeleted: Boolean = false
 )
