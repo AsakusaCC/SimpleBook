@@ -4,7 +4,7 @@ sealed class Screen(val route: String) {
     data object BookList : Screen("book_list")
     data object Collection : Screen("collection")
     data object Reader : Screen("reader/{bookId}?charOffset={charOffset}&chapterIndex={chapterIndex}") {
-        fun createRoute(bookId: Long, charOffset: Long = 0L, chapterIndex: Int = 0) =
+        fun createRoute(bookId: Long, charOffset: Long = 0L, chapterIndex: Int = -1) =
             "reader/$bookId?charOffset=$charOffset&chapterIndex=$chapterIndex"
     }
     data object Bookmark : Screen("bookmark/{bookId}") {

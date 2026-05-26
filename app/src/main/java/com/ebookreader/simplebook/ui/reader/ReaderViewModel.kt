@@ -47,6 +47,8 @@ class ReaderViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val bookId: Long = savedStateHandle["bookId"] ?: 0L
+    private val initialChapterIndex: Int = savedStateHandle["chapterIndex"] ?: -1
+    private val initialCharOffset: Long = savedStateHandle["charOffset"] ?: 0L
 
     val settings: StateFlow<ReaderSettings> = settingsDataStore.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderSettings())
@@ -129,6 +131,12 @@ class ReaderViewModel @Inject constructor(
                 _scrollPercentage.value = if (totalChapters > 0) {
                     ((progress.percentage * totalChapters) - progress.chapterIndex).toFloat().coerceIn(0f, 1f)
                 } else 0f
+            }
+
+            // Override with position from Collection navigation
+            if (initialChapterIndex >= 0) {
+                _currentChapterIndex.value = initialChapterIndex
+                _scrollPercentage.value = 0f
             }
 
             _isLoading.value = false

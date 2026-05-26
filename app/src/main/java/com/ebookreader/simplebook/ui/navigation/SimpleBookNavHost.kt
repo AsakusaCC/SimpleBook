@@ -61,7 +61,7 @@ fun SimpleBookNavHost(
                 },
                 navArgument("chapterIndex") {
                     type = NavType.IntType
-                    defaultValue = 0
+                    defaultValue = -1
                 }
             )
         ) { backStackEntry ->
