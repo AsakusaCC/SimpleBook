@@ -33,6 +33,7 @@ import com.ebookreader.simplebook.domain.model.getStrings
 import com.ebookreader.simplebook.domain.service.SyncStatus
 import com.ebookreader.simplebook.ui.components.AdaptiveBookGrid
 import com.ebookreader.simplebook.ui.sync.SyncStatusIcon
+import com.ebookreader.simplebook.ui.sync.SyncTimeLabel
 import com.ebookreader.simplebook.ui.sync.SyncViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +56,7 @@ fun BookListScreen(
     val syncStatus by syncViewModel.syncStatus.collectAsState()
     val isSignedIn = syncViewModel.isSignedIn
     val isSyncing = syncStatus is SyncStatus.Syncing
+    val lastSyncedAt by syncViewModel.lastSyncedAt.collectAsState()
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -69,6 +71,12 @@ fun BookListScreen(
             TopAppBar(
                 title = { Text(strings.navBooks) },
                 actions = {
+                    if (isSignedIn) {
+                        SyncTimeLabel(
+                            lastSyncedAt = lastSyncedAt,
+                            isSyncing = isSyncing
+                        )
+                    }
                     SyncStatusIcon(
                         isSyncing = isSyncing,
                         isSignedIn = isSignedIn,

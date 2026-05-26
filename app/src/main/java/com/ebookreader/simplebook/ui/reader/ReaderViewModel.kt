@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.net.URLDecoder
 import javax.inject.Inject
@@ -124,7 +125,10 @@ class ReaderViewModel @Inject constructor(
 
             readingService.loadProgress(bookId)?.let { progress ->
                 _currentChapterIndex.value = progress.chapterIndex
-                _scrollPercentage.value = progress.percentage.toFloat()
+                val totalChapters = _chapters.value.size
+                _scrollPercentage.value = if (totalChapters > 0) {
+                    ((progress.percentage * totalChapters) - progress.chapterIndex).toFloat().coerceIn(0f, 1f)
+                } else 0f
             }
 
             _isLoading.value = false
@@ -333,17 +337,25 @@ class ReaderViewModel @Inject constructor(
 
     private fun saveCurrentProgress() {
         viewModelScope.launch {
+            val totalChapters = _chapters.value.size
+            val chapterPct = _scrollPercentage.value.toDouble().coerceIn(0.0, 1.0)
+            val overallPct = if (totalChapters > 0) {
+                ((_currentChapterIndex.value + chapterPct) / totalChapters).coerceIn(0.0, 1.0)
+            } else 0.0
+
             readingService.saveProgress(
                 bookId = bookId,
                 chapterIndex = _currentChapterIndex.value,
                 charOffset = 0,
-                percentage = _scrollPercentage.value.toDouble()
+                percentage = overallPct
             )
         }
     }
 
     override fun onCleared() {
         saveJob?.cancel()
+        // Save progress immediately when leaving reader
+        runBlocking { saveCurrentProgress() }
         super.onCleared()
     }
 }

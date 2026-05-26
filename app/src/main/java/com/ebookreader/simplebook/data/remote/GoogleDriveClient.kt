@@ -110,10 +110,7 @@ class GoogleDriveClient @Inject constructor(
         ).setFields("id").execute().id
     }
 
-    suspend fun getAppFolderId(): String? = withContext(Dispatchers.IO) {
-        val drive = drive ?: return@withContext null
-        drive.files().get("appfolder").setFields("id").execute().id
-    }
+    suspend fun getAppFolderId(): String = "appDataFolder"
 
     suspend fun findFileInFolder(folderId: String, fileName: String): String? = withContext(Dispatchers.IO) {
         val drive = drive ?: return@withContext null

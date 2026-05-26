@@ -41,6 +41,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.ebookreader.simplebook.domain.model.getStrings
 import com.ebookreader.simplebook.domain.service.SyncStatus
+import com.ebookreader.simplebook.ui.sync.SyncTimeLabel
 import com.ebookreader.simplebook.ui.sync.SyncViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +59,7 @@ fun SettingsScreen(
     val isSignedIn = account != null
     val accountEmail = account?.email
     val signInError by viewModel.signInError.collectAsState()
+    val lastSyncedAt by syncViewModel.lastSyncedAt.collectAsState()
 
     Scaffold(
         topBar = {
@@ -179,6 +181,12 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
+                SyncTimeLabel(
+                    lastSyncedAt = lastSyncedAt,
+                    isSyncing = syncStatus is SyncStatus.Syncing,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
 
                 val isSyncing = syncStatus is SyncStatus.Syncing
                 Row(

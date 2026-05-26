@@ -30,6 +30,9 @@ class SyncViewModel @Inject constructor(
     val conflictCount: StateFlow<Int> = syncService.conflictCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    val lastSyncedAt: StateFlow<Long?> = syncService.lastSyncedAt
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     val conflicts: StateFlow<List<ConflictRecordEntity>> = conflictDao.getUnresolvedConflicts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -63,6 +66,7 @@ class SyncViewModel @Inject constructor(
     }
 
     fun syncNow() {
+        android.util.Log.d("SyncViewModel", "syncNow: isSignedIn=$isSignedIn")
         viewModelScope.launch { syncService.syncAll() }
     }
 

@@ -2,6 +2,7 @@ package com.ebookreader.simplebook.data.remote
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -41,6 +42,7 @@ class AuthManager @Inject constructor(
 
     init {
         _signedInAccount.value = GoogleSignIn.getLastSignedInAccount(context)
+        Log.d("AuthManager", "init: lastSignedIn=${_signedInAccount.value?.email}, isSignedIn=$isSignedIn")
     }
 
     suspend fun handleSignInResult(data: Intent): Result<GoogleSignInAccount> {

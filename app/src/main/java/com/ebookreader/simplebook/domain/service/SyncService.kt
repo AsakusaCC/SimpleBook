@@ -1,5 +1,7 @@
 package com.ebookreader.simplebook.domain.service
 
+import android.content.Context
+import android.util.Log
 import com.ebookreader.simplebook.data.local.dao.ConflictDao
 import com.ebookreader.simplebook.data.local.entity.ConflictRecordEntity
 import com.ebookreader.simplebook.data.remote.AuthManager
@@ -15,6 +17,7 @@ import com.ebookreader.simplebook.domain.model.Book
 import com.ebookreader.simplebook.domain.model.Bookmark
 import com.ebookreader.simplebook.domain.model.Highlight
 import com.ebookreader.simplebook.domain.model.Note
+import com.ebookreader.simplebook.domain.model.BookFormat
 import com.ebookreader.simplebook.domain.model.ReadingProgress
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,8 +25,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.File
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 sealed class SyncStatus {
     data object Idle : SyncStatus()
@@ -34,6 +40,7 @@ sealed class SyncStatus {
 
 @Singleton
 class SyncService @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val driveClient: GoogleDriveClient,
     private val authManager: AuthManager,
     private val bookRepository: BookRepository,
@@ -48,11 +55,19 @@ class SyncService @Inject constructor(
     val syncStatus: StateFlow<SyncStatus> = _syncStatus.asStateFlow()
 
     private val _conflictCount = MutableStateFlow(0)
+
+    private val _lastSyncedAt = MutableStateFlow<Long?>(null)
+    val lastSyncedAt: StateFlow<Long?> = _lastSyncedAt.asStateFlow()
     val conflictCount: StateFlow<Int> = _conflictCount.asStateFlow()
 
     private val syncMutex = Mutex()
 
+    companion object {
+        private const val TAG = "SyncService"
+    }
+
     suspend fun syncAll() {
+        Log.d(TAG, "syncAll: isSignedIn=${authManager.isSignedIn}")
         if (!authManager.isSignedIn) {
             _syncStatus.value = SyncStatus.Error("Not signed in")
             return
@@ -61,27 +76,35 @@ class SyncService @Inject constructor(
         syncMutex.withLock {
             try {
                 _syncStatus.value = SyncStatus.Syncing
+                Log.d(TAG, "syncAll: starting pullFromRemote")
                 pullFromRemote()
+                Log.d(TAG, "syncAll: starting pushToRemote")
                 pushToRemote()
                 refreshConflictCount()
+                val now = System.currentTimeMillis()
+                _lastSyncedAt.value = now
                 _syncStatus.value = SyncStatus.Success
+                Log.d(TAG, "syncAll: completed successfully")
             } catch (e: Exception) {
+                Log.e(TAG, "syncAll: failed", e)
                 _syncStatus.value = SyncStatus.Error(e.message ?: "Sync failed")
             }
         }
     }
 
     suspend fun pushToRemote() {
-        val appFolderId = driveClient.getAppFolderId() ?: throw Exception("Cannot access app folder")
+        val appFolderId = driveClient.getAppFolderId()
         val books = bookRepository.getAllBooksNow()
+        Log.d(TAG, "pushToRemote: appFolderId=$appFolderId, books=${books.size}")
 
         for (book in books) {
-            // 简单策略：从未同步过（lastSyncedAt == null）或有本地修改的书都上传
-            // "有本地修改" = syncVersion > 1 表示数据被修改过
-            val hasLocalChanges = book.lastSyncedAt == null || book.syncVersion > 1
+            // Only push if never synced or modified since last sync
+            val hasLocalChanges = book.lastSyncedAt == null ||
+                (book.lastReadAt != null && book.lastReadAt!! > (book.lastSyncedAt ?: 0L))
 
             if (!hasLocalChanges) continue
 
+            Log.d(TAG, "pushToRemote: pushing book=${book.title}, syncVersion=${book.syncVersion}, lastSyncedAt=${book.lastSyncedAt}")
             val bookFolderName = "book_${book.id}"
             val bookFolderId = driveClient.createFolder(bookFolderName, appFolderId)
                 ?: throw Exception("Failed to create book folder")
@@ -124,8 +147,9 @@ class SyncService @Inject constructor(
     }
 
     suspend fun pullFromRemote() {
-        val appFolderId = driveClient.getAppFolderId() ?: throw Exception("Cannot access app folder")
+        val appFolderId = driveClient.getAppFolderId()
         val remoteFolders = driveClient.listFilesInFolder(appFolderId)
+        Log.d(TAG, "pullFromRemote: appFolderId=$appFolderId, remoteFolders=${remoteFolders.size}")
 
         for ((folderName, folderId) in remoteFolders) {
             if (!folderName.startsWith("book_")) continue
@@ -145,8 +169,7 @@ class SyncService @Inject constructor(
             val localBook = findLocalBook(folderName, metadata)
 
             if (localBook == null) {
-                // TODO: v1.1 完整实现远端新书下载（下载文件到本地、创建 Book 记录）
-                // 当前版本跳过远端独有的书籍
+                downloadBookFromRemote(folderId, folderName, metadata)
             } else {
                 // Local book exists - compare versions and detect conflicts
                 mergeLocalBook(localBook, metadata, folderId)
@@ -181,6 +204,109 @@ class SyncService @Inject constructor(
 
     // --- Private helpers ---
 
+    private suspend fun downloadBookFromRemote(
+        folderId: String,
+        folderName: String,
+        metadata: BookMetadata
+    ) {
+        // 1. Find and download the book file from Drive
+        val filesInFolder = driveClient.listFilesInFolder(folderId)
+        val bookFileEntry = filesInFolder.firstOrNull { (name, _) ->
+            !name.startsWith("metadata") && (name.endsWith(".epub") || name.endsWith(".txt"))
+        } ?: return
+
+        val extension = bookFileEntry.first.substringAfterLast('.').lowercase()
+        val format = when (extension) {
+            "epub" -> BookFormat.EPUB
+            "txt" -> BookFormat.TXT
+            else -> return
+        }
+
+        // 2. Download to local books directory
+        val booksDir = File(context.filesDir, "books").also { it.mkdirs() }
+        val localFileName = "${UUID.randomUUID()}.$extension"
+        val localFile = File(booksDir, localFileName)
+        driveClient.downloadFileTo(bookFileEntry.second, localFile)
+        if (!localFile.exists()) return
+
+        // 3. Create book record via repository
+        val book = Book(
+            title = metadata.title,
+            author = metadata.author,
+            filePath = localFile.absolutePath,
+            format = format,
+            fileSize = localFile.length(),
+            syncVersion = metadata.syncVersion,
+            lastSyncedAt = System.currentTimeMillis(),
+            driveFileId = folderId
+        )
+        val bookId = bookRepository.addBook(book)
+        val savedBook = book.copy(id = bookId)
+
+        // 4. Apply remote progress
+        metadata.progress?.let { prog ->
+            readingProgressRepository.saveProgress(
+                ReadingProgress(
+                    bookId = bookId,
+                    chapterIndex = prog.chapterIndex,
+                    charOffset = prog.charOffset,
+                    percentage = prog.percentage,
+                    updatedAt = prog.updatedAt,
+                    syncVersion = prog.syncVersion,
+                    lastSyncedAt = System.currentTimeMillis()
+                )
+            )
+        }
+
+        // 5. Apply remote bookmarks
+        for (bm in metadata.bookmarks) {
+            bookmarkRepository.addBookmark(
+                Bookmark(
+                    bookId = bookId,
+                    chapterIndex = bm.chapterIndex,
+                    charOffset = bm.charOffset,
+                    name = bm.name,
+                    createdAt = bm.createdAt,
+                    syncVersion = bm.syncVersion,
+                    lastSyncedAt = System.currentTimeMillis()
+                )
+            )
+        }
+
+        // 6. Apply remote highlights
+        for (hl in metadata.highlights) {
+            highlightRepository.addHighlight(
+                Highlight(
+                    bookId = bookId,
+                    chapterIndex = hl.chapterIndex,
+                    startOffset = hl.startOffset,
+                    endOffset = hl.endOffset,
+                    color = hl.color.toLong(),
+                    note = hl.note,
+                    createdAt = hl.createdAt,
+                    syncVersion = hl.syncVersion,
+                    lastSyncedAt = System.currentTimeMillis()
+                )
+            )
+        }
+
+        // 7. Apply remote notes
+        for (nt in metadata.notes) {
+            noteRepository.addNote(
+                Note(
+                    bookId = bookId,
+                    highlightId = nt.highlightId,
+                    chapterIndex = nt.chapterIndex,
+                    charOffset = nt.charOffset,
+                    content = nt.content,
+                    createdAt = nt.createdAt,
+                    syncVersion = nt.syncVersion,
+                    lastSyncedAt = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
     private suspend fun findLocalBook(folderName: String, metadata: BookMetadata): Book? {
         // Try to match by folder name pattern "book_{id}"
         val idFromFolder = folderName.removePrefix("book_").toLongOrNull()
@@ -195,45 +321,53 @@ class SyncService @Inject constructor(
     }
 
     private suspend fun mergeLocalBook(localBook: Book, metadata: BookMetadata, driveFolderId: String) {
-        val remoteVersion = metadata.syncVersion
+        // Reading progress: always take the higher percentage
+        mergeProgress(localBook, metadata)
+
+        // Bookmarks / highlights / notes: version-based conflict detection
         val localVersion = localBook.syncVersion
         val localHasChanges = localBook.lastSyncedAt != null &&
             localBook.lastReadAt != null &&
             localBook.lastReadAt!! > (localBook.lastSyncedAt ?: 0)
 
-        if (remoteVersion > localVersion) {
+        if (metadata.syncVersion > localVersion) {
             if (localHasChanges) {
-                // Conflict detected
                 detectConflicts(localBook, metadata)
             } else {
-                // Remote-only update - apply directly
-                applyRemoteMetadata(localBook, metadata, driveFolderId)
+                applyRemoteAnnotations(localBook, metadata, driveFolderId)
             }
         }
-        // If remoteVersion <= localVersion, local is up to date or ahead, nothing to do
+    }
+
+    private suspend fun mergeProgress(localBook: Book, metadata: BookMetadata) {
+        val remoteProgress = metadata.progress ?: return
+        val localProgress = readingProgressRepository.getProgress(localBook.id)
+
+        val localPct = localProgress?.percentage ?: 0.0
+        val remotePct = remoteProgress.percentage
+
+        if (remotePct > localPct) {
+            // Remote is further ahead → apply
+            readingProgressRepository.saveProgress(
+                ReadingProgress(
+                    id = localProgress?.id ?: 0,
+                    bookId = localBook.id,
+                    chapterIndex = remoteProgress.chapterIndex,
+                    charOffset = remoteProgress.charOffset,
+                    percentage = remoteProgress.percentage,
+                    updatedAt = remoteProgress.updatedAt,
+                    syncVersion = remoteProgress.syncVersion,
+                    lastSyncedAt = System.currentTimeMillis()
+                )
+            )
+            Log.d(TAG, "mergeProgress: remote $remotePct > local $localPct, applied remote")
+        } else {
+            Log.d(TAG, "mergeProgress: local $localPct >= remote $remotePct, kept local")
+        }
     }
 
     private suspend fun detectConflicts(localBook: Book, metadata: BookMetadata) {
         val now = System.currentTimeMillis()
-
-        // Check progress conflict
-        val localProgress = readingProgressRepository.getProgress(localBook.id)
-        if (localProgress != null && metadata.progress != null) {
-            if (metadata.progress.syncVersion > localProgress.syncVersion) {
-                conflictDao.insert(
-                    ConflictRecordEntity(
-                        bookId = localBook.id,
-                        entityType = "progress",
-                        entityId = localProgress.id,
-                        localSyncVersion = localProgress.syncVersion,
-                        remoteSyncVersion = metadata.progress.syncVersion,
-                        localData = gson.toJson(localProgress),
-                        remoteData = gson.toJson(metadata.progress),
-                        createdAt = now
-                    )
-                )
-            }
-        }
 
         // Check bookmark conflicts
         val localBookmarks = bookmarkRepository.getBookmarksForBookNow(localBook.id)
@@ -306,7 +440,7 @@ class SyncService @Inject constructor(
         }
     }
 
-    private suspend fun applyRemoteMetadata(localBook: Book, metadata: BookMetadata, driveFolderId: String) {
+    private suspend fun applyRemoteAnnotations(localBook: Book, metadata: BookMetadata, driveFolderId: String) {
         val now = System.currentTimeMillis()
 
         // Update book metadata
@@ -319,25 +453,6 @@ class SyncService @Inject constructor(
                 driveFileId = driveFolderId
             )
         )
-
-        // Apply remote progress
-        metadata.progress?.let { prog ->
-            val existing = readingProgressRepository.getProgress(localBook.id)
-            if (existing == null || prog.syncVersion > existing.syncVersion) {
-                readingProgressRepository.saveProgress(
-                    ReadingProgress(
-                        id = existing?.id ?: 0,
-                        bookId = localBook.id,
-                        chapterIndex = prog.chapterIndex,
-                        charOffset = prog.charOffset,
-                        percentage = prog.percentage,
-                        updatedAt = prog.updatedAt,
-                        syncVersion = prog.syncVersion,
-                        lastSyncedAt = now
-                    )
-                )
-            }
-        }
 
         // Apply remote bookmarks (upsert by matching chapter + offset)
         val localBookmarks = bookmarkRepository.getBookmarksForBookNow(localBook.id)
