@@ -10,15 +10,13 @@ import javax.inject.Singleton
 class HighlightService @Inject constructor(
     private val highlightRepo: HighlightRepository
 ) {
-    fun getHighlightsForChapter(bookId: Long, chapterIndex: Int): Flow<List<Highlight>> =
-        highlightRepo.getHighlightsForChapter(bookId, chapterIndex)
+    fun getHighlightsForChapter(bookUuid: String, chapterIndex: Int): Flow<List<Highlight>> =
+        highlightRepo.getHighlightsForChapter(bookUuid, chapterIndex)
 
-    fun getHighlightsForBook(bookId: Long): Flow<List<Highlight>> =
-        highlightRepo.getHighlightsForBook(bookId)
+    fun getHighlightsForBook(bookUuid: String): Flow<List<Highlight>> =
+        highlightRepo.getHighlightsForBook(bookUuid)
 
-    suspend fun addHighlight(highlight: Highlight): Long =
-        highlightRepo.addHighlight(highlight)
+    suspend fun addHighlight(highlight: Highlight) = highlightRepo.addHighlight(highlight)
 
-    suspend fun deleteHighlight(highlight: Highlight) =
-        highlightRepo.deleteHighlight(highlight)
+    suspend fun softDeleteHighlight(highlight: Highlight) = highlightRepo.softDeleteHighlight(highlight.uuid)
 }

@@ -11,36 +11,31 @@ import javax.inject.Singleton
 class BookmarkService @Inject constructor(
     private val bookmarkRepo: BookmarkRepository
 ) {
-    fun getBookmarksForBook(bookId: Long): Flow<List<Bookmark>> =
-        bookmarkRepo.getBookmarksForBook(bookId)
+    fun getBookmarksForBook(bookUuid: String): Flow<List<Bookmark>> =
+        bookmarkRepo.getBookmarksForBook(bookUuid)
 
-    fun getAllBookmarks(): Flow<List<Bookmark>> =
-        bookmarkRepo.getAllBookmarks()
+    fun getAllBookmarks(): Flow<List<Bookmark>> = bookmarkRepo.getAllBookmarks()
 
-    suspend fun addBookmark(bookId: Long, chapterIndex: Int, charOffset: Long, name: String): Long =
+    suspend fun addBookmark(bookUuid: String, chapterIndex: Int, charOffset: Long, name: String) {
         bookmarkRepo.addBookmark(
-            Bookmark(
-                bookId = bookId,
-                chapterIndex = chapterIndex,
-                charOffset = charOffset,
-                name = name
-            )
+            Bookmark(bookUuid = bookUuid, chapterIndex = chapterIndex, charOffset = charOffset, name = name)
         )
+    }
 
-    suspend fun deleteBookmarkForPosition(bookId: Long, chapterIndex: Int) {
-        val bookmarks = bookmarkRepo.getBookmarksForBook(bookId).first()
+    suspend fun deleteBookmarkForPosition(bookUuid: String, chapterIndex: Int) {
+        val bookmarks = bookmarkRepo.getBookmarksForBook(bookUuid).first()
         val match = bookmarks.find { it.chapterIndex == chapterIndex }
         if (match != null) {
-            bookmarkRepo.deleteBookmark(match)
+            bookmarkRepo.softDeleteBookmark(match.uuid)
         }
     }
 
-    suspend fun deleteBookmark(bookmark: Bookmark) {
-        bookmarkRepo.deleteBookmark(bookmark)
+    suspend fun softDeleteBookmark(bookmark: Bookmark) {
+        bookmarkRepo.softDeleteBookmark(bookmark.uuid)
     }
 
-    suspend fun isBookmarked(bookId: Long, chapterIndex: Int): Boolean {
-        val bookmarks = bookmarkRepo.getBookmarksForBook(bookId).first()
+    suspend fun isBookmarked(bookUuid: String, chapterIndex: Int): Boolean {
+        val bookmarks = bookmarkRepo.getBookmarksForBook(bookUuid).first()
         return bookmarks.any { it.chapterIndex == chapterIndex }
     }
 }

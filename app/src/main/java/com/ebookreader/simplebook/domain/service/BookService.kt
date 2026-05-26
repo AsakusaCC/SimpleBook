@@ -18,7 +18,7 @@ class BookService @Inject constructor(
 ) {
     fun getAllBooks(): Flow<List<Book>> = bookRepository.getAllBooks()
 
-    suspend fun getBookById(id: Long): Book? = bookRepository.getBookById(id)
+    suspend fun getBookByUuid(uuid: String): Book? = bookRepository.getBookByUuid(uuid)
 
     suspend fun importBook(file: File, originalName: String = file.nameWithoutExtension): Book {
         val format = when (file.extension.lowercase()) {
@@ -54,9 +54,9 @@ class BookService @Inject constructor(
             fileSize = file.length()
         )
 
-        val id = bookRepository.addBook(book)
-        return book.copy(id = id)
+        bookRepository.addBook(book)
+        return book
     }
 
-    suspend fun deleteBook(book: Book) = bookRepository.deleteBook(book)
+    suspend fun softDeleteBook(uuid: String) = bookRepository.softDeleteBook(uuid)
 }

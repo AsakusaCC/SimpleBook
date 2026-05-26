@@ -10,8 +10,8 @@ import javax.inject.Singleton
 class NoteService @Inject constructor(
     private val noteRepo: NoteRepository
 ) {
-    fun getNotesForBook(bookId: Long): Flow<List<Note>> = noteRepo.getNotesForBook(bookId)
+    fun getNotesForBook(bookUuid: String): Flow<List<Note>> = noteRepo.getNotesForBook(bookUuid)
     fun getAllNotes(): Flow<List<Note>> = noteRepo.getAllNotes()
-    suspend fun addNote(note: Note): Long = noteRepo.addNote(note)
-    suspend fun deleteNote(note: Note) = noteRepo.deleteNote(note)
+    suspend fun addNote(note: Note) = noteRepo.addNote(note)
+    suspend fun softDeleteNote(note: Note) = noteRepo.softDeleteNote(note.uuid)
 }

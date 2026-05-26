@@ -11,36 +11,20 @@ class ReadingService @Inject constructor(
     private val readingProgressRepo: ReadingProgressRepository,
     private val bookRepo: BookRepository
 ) {
-    suspend fun saveProgress(bookId: Long, chapterIndex: Int, charOffset: Long, percentage: Double) {
-        val existing = readingProgressRepo.getProgress(bookId)
+    suspend fun saveProgress(bookUuid: String, chapterIndex: Int, charOffset: Long, percentage: Double) {
+        val existing = readingProgressRepo.getProgress(bookUuid)
+        val now = System.currentTimeMillis()
         val progress = if (existing != null) {
-            existing.copy(
-                chapterIndex = chapterIndex,
-                charOffset = charOffset,
-                percentage = percentage,
-                updatedAt = System.currentTimeMillis(),
-                syncVersion = existing.syncVersion + 1
-            )
+            existing.copy(chapterIndex = chapterIndex, charOffset = charOffset, percentage = percentage, updatedAt = now)
         } else {
-            ReadingProgress(
-                bookId = bookId,
-                chapterIndex = chapterIndex,
-                charOffset = charOffset,
-                percentage = percentage,
-                updatedAt = System.currentTimeMillis()
-            )
+            ReadingProgress(bookUuid = bookUuid, chapterIndex = chapterIndex, charOffset = charOffset, percentage = percentage, updatedAt = now)
         }
         readingProgressRepo.saveProgress(progress)
 
-        // Update lastReadAt on book
-        bookRepo.getBookById(bookId)?.let { book ->
-            bookRepo.updateBook(book.copy(
-                lastReadAt = System.currentTimeMillis(),
-                syncVersion = book.syncVersion + 1
-            ))
+        bookRepo.getBookByUuid(bookUuid)?.let { book ->
+            bookRepo.updateBook(book.copy(lastReadAt = now, updatedAt = now))
         }
     }
 
-    suspend fun loadProgress(bookId: Long): ReadingProgress? =
-        readingProgressRepo.getProgress(bookId)
+    suspend fun loadProgress(bookUuid: String): ReadingProgress? = readingProgressRepo.getProgress(bookUuid)
 }
