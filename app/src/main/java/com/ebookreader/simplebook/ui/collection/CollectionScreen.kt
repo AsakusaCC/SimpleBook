@@ -104,7 +104,7 @@ private fun CollectionCompactLayout(
                         onItemClick = { bookmark ->
                             navController.navigate(
                                 Screen.Reader.createRoute(
-                                    bookmark.bookId,
+                                    bookmark.bookUuid,
                                     bookmark.charOffset,
                                     bookmark.chapterIndex
                                 )
@@ -120,7 +120,7 @@ private fun CollectionCompactLayout(
                         onItemClick = { note ->
                             navController.navigate(
                                 Screen.Reader.createRoute(
-                                    note.bookId,
+                                    note.bookUuid,
                                     note.charOffset,
                                     note.chapterIndex
                                 )
@@ -172,7 +172,7 @@ private fun CollectionExpandedLayout(
                     onItemClick = { bookmark ->
                         navController.navigate(
                             Screen.Reader.createRoute(
-                                bookmark.bookId,
+                                bookmark.bookUuid,
                                 bookmark.charOffset,
                                 bookmark.chapterIndex
                             )
@@ -201,7 +201,7 @@ private fun CollectionExpandedLayout(
                     onItemClick = { note ->
                         navController.navigate(
                             Screen.Reader.createRoute(
-                                note.bookId,
+                                note.bookUuid,
                                 note.charOffset,
                                 note.chapterIndex
                             )
@@ -229,20 +229,20 @@ fun BookmarkGroupedList(
         EmptyState("还没有书签")
         return
     }
-    val expandedState = remember { mutableStateMapOf<Long, Boolean>() }
-    groups.forEach { it.book.id.let { id -> if (id !in expandedState) expandedState[id] = false } }
+    val expandedState = remember { mutableStateMapOf<String, Boolean>() }
+    groups.forEach { it.book.uuid.let { id -> if (id !in expandedState) expandedState[id] = false } }
 
     LazyColumn(
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         groups.forEach { group ->
-            val isExpanded = expandedState[group.book.id] ?: true
-            item(key = "header_${group.book.id}") {
+            val isExpanded = expandedState[group.book.uuid] ?: true
+            item(key = "header_${group.book.uuid}") {
                 GroupHeader(
                     title = group.book.title,
                     count = group.items.size,
                     isExpanded = isExpanded,
-                    onClick = { expandedState[group.book.id] = !isExpanded }
+                    onClick = { expandedState[group.book.uuid] = !isExpanded }
                 )
             }
             if (isExpanded) {
@@ -275,20 +275,20 @@ fun NoteGroupedList(
         EmptyState("还没有笔记")
         return
     }
-    val expandedState = remember { mutableStateMapOf<Long, Boolean>() }
-    groups.forEach { it.book.id.let { id -> if (id !in expandedState) expandedState[id] = false } }
+    val expandedState = remember { mutableStateMapOf<String, Boolean>() }
+    groups.forEach { it.book.uuid.let { id -> if (id !in expandedState) expandedState[id] = false } }
 
     LazyColumn(
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         groups.forEach { group ->
-            val isExpanded = expandedState[group.book.id] ?: true
-            item(key = "header_${group.book.id}") {
+            val isExpanded = expandedState[group.book.uuid] ?: true
+            item(key = "header_${group.book.uuid}") {
                 GroupHeader(
                     title = group.book.title,
                     count = group.items.size,
                     isExpanded = isExpanded,
-                    onClick = { expandedState[group.book.id] = !isExpanded },
+                    onClick = { expandedState[group.book.uuid] = !isExpanded },
                     icon = Icons.Default.Create
                 )
             }

@@ -57,7 +57,7 @@ import com.ebookreader.simplebook.domain.model.getStrings
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
-    bookId: Long,
+    bookUuid: String,
     navController: NavController? = null,
     windowWidthSizeClass: WindowWidthSizeClass = WindowWidthSizeClass.Compact,
     modifier: Modifier = Modifier,

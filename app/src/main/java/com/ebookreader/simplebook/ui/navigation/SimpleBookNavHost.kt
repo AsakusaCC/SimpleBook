@@ -67,7 +67,7 @@ fun SimpleBookNavHost(
         ) { backStackEntry ->
             val bookUuid = backStackEntry.arguments?.getString("bookUuid") ?: ""
             ReaderScreen(
-                bookId = bookUuid,
+                bookUuid = bookUuid,
                 navController = navController,
                 windowWidthSizeClass = windowSizeClass.widthSizeClass
             )
@@ -80,7 +80,7 @@ fun SimpleBookNavHost(
             )
         ) { backStackEntry ->
             val bookUuid = backStackEntry.arguments?.getString("bookUuid") ?: ""
-            BookmarkScreen(bookId = bookUuid)
+            BookmarkScreen(bookUuid = bookUuid)
         }
 
         composable(
@@ -90,7 +90,7 @@ fun SimpleBookNavHost(
             )
         ) { backStackEntry ->
             val bookUuid = backStackEntry.arguments?.getString("bookUuid") ?: ""
-            NoteScreen(bookId = bookUuid)
+            NoteScreen(bookUuid = bookUuid)
         }
 
         composable(Screen.Settings.route) {

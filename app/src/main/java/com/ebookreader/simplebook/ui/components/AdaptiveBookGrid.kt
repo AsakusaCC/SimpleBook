@@ -19,7 +19,7 @@ fun AdaptiveBookGrid(
     onBookClick: (Book) -> Unit,
     onBookLongClick: (Book) -> Unit,
     unknownAuthorText: String = "未知",
-    bookProgress: Map<Long, Double> = emptyMap(),
+    bookProgress: Map<String, Double> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     val columns = when (windowWidthSizeClass) {
@@ -35,13 +35,13 @@ fun AdaptiveBookGrid(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(books, key = { it.id }) { book ->
+        items(books, key = { it.uuid }) { book ->
             BookCard(
                 book = book,
                 onClick = { onBookClick(book) },
                 onLongClick = { onBookLongClick(book) },
                 unknownAuthorText = unknownAuthorText,
-                percentage = bookProgress[book.id] ?: 0.0
+                percentage = bookProgress[book.uuid] ?: 0.0
             )
         }
     }

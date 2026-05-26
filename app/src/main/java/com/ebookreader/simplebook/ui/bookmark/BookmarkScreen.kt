@@ -26,7 +26,7 @@ import androidx.navigation.NavController
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookmarkScreen(
-    bookId: Long,
+    bookUuid: String,
     navController: NavController? = null,
     viewModel: BookmarkViewModel = hiltViewModel()
 ) {
