@@ -3,6 +3,7 @@ package com.ebookreader.simplebook.data.local.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.ebookreader.simplebook.data.local.entity.HighlightEntity
 import kotlinx.coroutines.flow.Flow
@@ -15,7 +16,7 @@ interface HighlightDao {
     @Query("SELECT * FROM highlights WHERE bookId = :bookId ORDER BY createdAt DESC")
     fun getHighlightsForBook(bookId: Long): Flow<List<HighlightEntity>>
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(highlight: HighlightEntity): Long
 
     @Delete

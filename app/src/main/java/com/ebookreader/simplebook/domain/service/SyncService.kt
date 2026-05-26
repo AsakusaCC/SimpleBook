@@ -98,12 +98,6 @@ class SyncService @Inject constructor(
         Log.d(TAG, "pushToRemote: appFolderId=$appFolderId, books=${books.size}")
 
         for (book in books) {
-            // Only push if never synced or modified since last sync
-            val hasLocalChanges = book.lastSyncedAt == null ||
-                (book.lastReadAt != null && book.lastReadAt!! > (book.lastSyncedAt ?: 0L))
-
-            if (!hasLocalChanges) continue
-
             Log.d(TAG, "pushToRemote: pushing book=${book.title}, syncVersion=${book.syncVersion}, lastSyncedAt=${book.lastSyncedAt}")
             val bookFolderName = "book_${book.id}"
             val bookFolderId = driveClient.createFolder(bookFolderName, appFolderId)
@@ -125,13 +119,15 @@ class SyncService @Inject constructor(
                 }
             }
 
-            // Build and upload metadata
+            // Always push metadata to ensure annotation changes and deletions are synced
             val progress = readingProgressRepository.getProgress(book.id)
             val bookmarks = bookmarkRepository.getBookmarksForBookNow(book.id)
             val highlights = highlightRepository.getHighlightsForBookNow(book.id)
             val notes = noteRepository.getNotesForBookNow(book.id)
 
-            val metadata = buildBookMetadata(book, progress, bookmarks, highlights, notes)
+            // Increment syncVersion to signal changes to other devices
+            val updatedBook = book.copy(syncVersion = book.syncVersion + 1)
+            val metadata = buildBookMetadata(updatedBook, progress, bookmarks, highlights, notes)
             val metadataJson = gson.toJson(metadata)
             driveClient.uploadFile(
                 bookFolderId,
@@ -140,9 +136,9 @@ class SyncService @Inject constructor(
                 "application/json"
             )
 
-            // Update lastSyncedAt
+            // Update lastSyncedAt and syncVersion
             val now = System.currentTimeMillis()
-            bookRepository.updateBook(book.copy(lastSyncedAt = now))
+            bookRepository.updateBook(updatedBook.copy(lastSyncedAt = now))
         }
     }
 
@@ -482,6 +478,13 @@ class SyncService @Inject constructor(
                 )
             }
         }
+        // Delete local bookmarks absent from remote (only previously synced ones)
+        val remoteBookmarkPositions = metadata.bookmarks.map { Pair(it.chapterIndex, it.charOffset) }.toSet()
+        for (localBm in localBookmarks) {
+            if (Pair(localBm.chapterIndex, localBm.charOffset) !in remoteBookmarkPositions && localBm.lastSyncedAt != null) {
+                bookmarkRepository.deleteBookmark(localBm)
+            }
+        }
 
         // Apply remote highlights
         val localHighlights = highlightRepository.getHighlightsForBookNow(localBook.id)
@@ -516,6 +519,13 @@ class SyncService @Inject constructor(
                 )
             }
         }
+        // Delete local highlights absent from remote (only previously synced ones)
+        val remoteHighlightKeys = metadata.highlights.map { Triple(it.chapterIndex, it.startOffset, it.endOffset) }.toSet()
+        for (localHl in localHighlights) {
+            if (Triple(localHl.chapterIndex, localHl.startOffset, localHl.endOffset) !in remoteHighlightKeys && localHl.lastSyncedAt != null) {
+                highlightRepository.deleteHighlight(localHl)
+            }
+        }
 
         // Apply remote notes
         val localNotes = noteRepository.getNotesForBookNow(localBook.id)
@@ -544,6 +554,13 @@ class SyncService @Inject constructor(
                         lastSyncedAt = now
                     )
                 )
+            }
+        }
+        // Delete local notes absent from remote (only previously synced ones)
+        val remoteNotePositions = metadata.notes.map { Pair(it.chapterIndex, it.charOffset) }.toSet()
+        for (localNt in localNotes) {
+            if (Pair(localNt.chapterIndex, localNt.charOffset) !in remoteNotePositions && localNt.lastSyncedAt != null) {
+                noteRepository.deleteNote(localNt)
             }
         }
     }
