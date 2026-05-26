@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.ebookreader.simplebook.domain.model.Book
+import com.ebookreader.simplebook.ui.collection.CollectionScreen
 import com.ebookreader.simplebook.ui.booklist.BookListScreen
 import com.ebookreader.simplebook.ui.bookmark.BookmarkScreen
 import com.ebookreader.simplebook.ui.note.NoteScreen
@@ -31,6 +32,13 @@ fun SimpleBookNavHost(
         startDestination = Screen.BookList.route,
         modifier = modifier
     ) {
+        composable(Screen.Collection.route) {
+            CollectionScreen(
+                navController = navController,
+                windowWidthSizeClass = windowSizeClass.widthSizeClass
+            )
+        }
+
         composable(Screen.BookList.route) {
             BookListScreen(
                 windowWidthSizeClass = windowSizeClass.widthSizeClass,
@@ -46,7 +54,15 @@ fun SimpleBookNavHost(
         composable(
             route = Screen.Reader.route,
             arguments = listOf(
-                navArgument("bookId") { type = NavType.LongType }
+                navArgument("bookId") { type = NavType.LongType },
+                navArgument("charOffset") {
+                    type = NavType.LongType
+                    defaultValue = 0L
+                },
+                navArgument("chapterIndex") {
+                    type = NavType.IntType
+                    defaultValue = 0
+                }
             )
         ) { backStackEntry ->
             val bookId = backStackEntry.arguments?.getLong("bookId") ?: 0L

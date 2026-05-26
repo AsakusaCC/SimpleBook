@@ -61,7 +61,7 @@ private data class NavItem(
 private fun rememberNavItems(strings: AppStrings): List<NavItem> {
     return listOf(
         NavItem(Screen.BookList.route, Icons.Default.Book, strings.navBooks),
-        NavItem(Screen.BookList.route, Icons.Default.Favorite, strings.navFavorites),
+        NavItem(Screen.Collection.route, Icons.Default.Favorite, strings.navFavorites),
         NavItem(Screen.Settings.route, Icons.Default.Settings, strings.navSettings)
     )
 }
