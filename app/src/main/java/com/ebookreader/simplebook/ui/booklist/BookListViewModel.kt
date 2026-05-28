@@ -59,14 +59,20 @@ class BookListViewModel @Inject constructor(
         .map { it.sortOrder }
         .distinctUntilChanged()
 
-    val currentItems: StateFlow<List<ShelfItem>> = combine(
-        _currentFolderId,
+    private val _shelfData = combine(
         _shelfBooks,
         _foldersWithCount,
         _folderBooks,
-        _bookProgress,
+        _bookProgress
+    ) { shelfBooks, foldersWithCount, folderBooks, progressMap ->
+        ShelfData(shelfBooks, foldersWithCount, folderBooks, progressMap)
+    }
+
+    val currentItems: StateFlow<List<ShelfItem>> = combine(
+        _currentFolderId,
+        _shelfData,
         sortOrderFlow
-    ) { folderId, shelfBooks, foldersWithCount, folderBooks, progressMap, sortOrder ->
+    ) { folderId, data, sortOrder ->
         val sorted: (List<ShelfItem.BookItem>) -> List<ShelfItem.BookItem> = { items ->
             when (sortOrder) {
                 SortOrder.LAST_READ -> items.sortedByDescending { it.book.lastReadAt ?: 0L }
@@ -75,15 +81,15 @@ class BookListViewModel @Inject constructor(
         }
 
         if (folderId != null) {
-            sorted(folderBooks.map { book ->
-                ShelfItem.BookItem(book, progressMap[book.uuid] ?: 0.0)
+            sorted(data.folderBooks.map { book ->
+                ShelfItem.BookItem(book, data.progressMap[book.uuid] ?: 0.0)
             })
         } else {
-            val folderItems = foldersWithCount.map { (folder, count) ->
+            val folderItems = data.foldersWithCount.map { (folder, count) ->
                 ShelfItem.FolderItem(folder, count)
             }
-            val bookItems = sorted(shelfBooks.map { book ->
-                ShelfItem.BookItem(book, progressMap[book.uuid] ?: 0.0)
+            val bookItems = sorted(data.shelfBooks.map { book ->
+                ShelfItem.BookItem(book, data.progressMap[book.uuid] ?: 0.0)
             })
             folderItems + bookItems
         }
@@ -183,3 +189,10 @@ class BookListViewModel @Inject constructor(
         }
     }
 }
+
+private data class ShelfData(
+    val shelfBooks: List<Book>,
+    val foldersWithCount: List<Pair<Folder, Int>>,
+    val folderBooks: List<Book>,
+    val progressMap: Map<String, Double>
+)
