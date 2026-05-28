@@ -78,7 +78,9 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _updateState.value = UpdateState(checking = true)
             try {
-                val json = URL(RELEASES_API).readText()
+                val conn = URL(RELEASES_API).openConnection() as java.net.HttpURLConnection
+                conn.setRequestProperty("User-Agent", "SimpleBook")
+                val json = conn.inputStream.bufferedReader().use { it.readText() }
                 val release = Gson().fromJson(json, GitHubRelease::class.java)
                 val remoteVersion = release.tagName.removePrefix("v")
                 val apkAsset = release.assets.find { it.name.endsWith(".apk") }

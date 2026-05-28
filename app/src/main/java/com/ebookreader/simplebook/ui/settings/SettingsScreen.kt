@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,7 +27,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -52,6 +56,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.ebookreader.simplebook.R
@@ -231,37 +236,69 @@ fun SettingsScreen(
             if (updateState.latestVersion != null && updateState.downloadUrl != null) {
                 val latestVer = updateState.latestVersion!!
                 val dlUrl = updateState.downloadUrl!!
-                AlertDialog(
-                        onDismissRequest = { viewModel.dismissUpdate() },
-                        text = {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Image(
-                                    painter = painterResource(R.drawable.mizuki_logo),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(120.dp)
-                                )
-                                Spacer(Modifier.height(16.dp))
+                Dialog(onDismissRequest = { viewModel.dismissUpdate() }) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Card(
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 70.dp)
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 80.dp, bottom = 16.dp)
+                            ) {
                                 Text(
                                     "发现新版本 $latestVer",
-                                    style = MaterialTheme.typography.titleMedium
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = MaterialTheme.colorScheme.primary
                                 )
+
                                 Spacer(Modifier.height(8.dp))
+
                                 Text(
                                     "当前版本 v${versionName}，是否下载更新？",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+
+                                Spacer(Modifier.height(20.dp))
+
+                                Row(
+                                    horizontalArrangement = Arrangement.End,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp)
+                                ) {
+                                    TextButton(onClick = { viewModel.dismissUpdate() }) {
+                                        Text(strings.cancel)
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Button(onClick = {
+                                        viewModel.downloadUpdate(dlUrl, latestVer)
+                                    }) {
+                                        Text("下载")
+                                    }
+                                }
                             }
-                        },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                viewModel.downloadUpdate(dlUrl, latestVer)
-                            }) { Text("下载") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { viewModel.dismissUpdate() }) { Text(strings.cancel) }
                         }
-                    )
+
+                        Image(
+                            painter = painterResource(R.drawable.mizuki_logo),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(140.dp)
+                                .align(Alignment.TopCenter)
+                        )
+                    }
+                }
             }
 
             // ── Google Drive 同步 ──
