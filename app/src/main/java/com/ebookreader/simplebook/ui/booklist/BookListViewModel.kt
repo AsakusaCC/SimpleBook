@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -110,15 +112,12 @@ class BookListViewModel @Inject constructor(
             }.collect { _foldersWithCount.value = it }
         }
         viewModelScope.launch {
-            _currentFolderId.collect { folderId ->
-                if (folderId != null) {
-                    bookService.getBooksInFolder(folderId).collect { books ->
-                        _folderBooks.value = books
-                    }
-                } else {
-                    _folderBooks.value = emptyList()
+            _currentFolderId
+                .flatMapLatest { folderId ->
+                    if (folderId != null) bookService.getBooksInFolder(folderId)
+                    else flowOf(emptyList())
                 }
-            }
+                .collect { _folderBooks.value = it }
         }
         viewModelScope.launch {
             bookService.getAllBooks().collect { bookList ->

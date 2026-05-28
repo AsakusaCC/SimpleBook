@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.outlined.ViewModule
 import androidx.compose.material3.AlertDialog
@@ -267,45 +268,22 @@ fun BookListScreen(
         }
     }
 
-    // Move to folder dialog
+    // Long-press book dialog (move to folder + delete)
     longPressedBook?.let { book ->
         AlertDialog(
             onDismissRequest = { longPressedBook = null },
-            title = { Text(strings.moveToFolder) },
+            title = { Text(book.title) },
             text = {
                 val folders by viewModel.allFoldersForDialog.collectAsState()
-                if (folders.isEmpty()) {
-                    Text(strings.noFolders)
-                } else {
-                    LazyColumn {
-                        if (currentFolderId != null) {
-                            item {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            viewModel.moveBookToFolder(book.uuid, null)
-                                            longPressedBook = null
-                                        }
-                                        .padding(vertical = 12.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Home,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Text(strings.moveBackToShelf)
-                                }
-                            }
-                        }
-                        items(folders) { (folder, count) ->
+                LazyColumn {
+                    // Move to folder section
+                    if (currentFolderId != null) {
+                        item {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        viewModel.moveBookToFolder(book.uuid, folder.uuid)
+                                        viewModel.moveBookToFolder(book.uuid, null)
                                         longPressedBook = null
                                     }
                                     .padding(vertical = 12.dp),
@@ -313,19 +291,70 @@ fun BookListScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    Icons.Outlined.Folder,
+                                    Icons.Outlined.Home,
                                     contentDescription = null,
                                     modifier = Modifier.size(24.dp)
                                 )
-                                Column {
-                                    Text(folder.name)
-                                    Text(
-                                        text = strings.bookCount(count),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                                Text(strings.moveBackToShelf)
                             }
+                        }
+                    }
+                    items(folders) { (folder, count) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.moveBookToFolder(book.uuid, folder.uuid)
+                                    longPressedBook = null
+                                }
+                                .padding(vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Outlined.Folder,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Column {
+                                Text(folder.name)
+                                Text(
+                                    text = strings.bookCount(count),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    // Divider + delete
+                    item {
+                        androidx.compose.material3.HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.deleteBook(book)
+                                    longPressedBook = null
+                                }
+                                .padding(vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                            Text(
+                                strings.deleteBook,
+                                color = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                 }
