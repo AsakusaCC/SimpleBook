@@ -240,7 +240,7 @@ class SyncService @Inject constructor(
                 author = metadata.author,
                 updatedAt = metadata.updatedAt,
                 isDeleted = metadata.isDeleted,
-                folderId = metadata.folderId ?: localBook.folderId,
+                folderId = metadata.folderId,
                 driveFileId = driveFolderId,
                 lastSyncedAt = now
             )
