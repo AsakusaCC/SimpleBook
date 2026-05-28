@@ -10,6 +10,7 @@ data class BookMetadata(
     val coverPath: String? = null,
     val updatedAt: Long,
     val isDeleted: Boolean = false,
+    val folderId: String? = null,
     val progress: ProgressMetadata? = null,
     val bookmarks: List<BookmarkMetadata> = emptyList(),
     val highlights: List<HighlightMetadata> = emptyList(),
@@ -56,4 +57,18 @@ data class NoteMetadata(
     val createdAt: Long,
     val updatedAt: Long,
     val isDeleted: Boolean = false
+)
+
+data class FolderMetadata(
+    val uuid: String,
+    val name: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val isDeleted: Boolean,
+    val driveFileId: String? = null
+)
+
+data class FolderSyncData(
+    val version: Int = 1,
+    val folders: List<FolderMetadata>
 )

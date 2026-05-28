@@ -14,13 +14,17 @@ import com.ebookreader.simplebook.data.remote.NoteMetadata
 import com.ebookreader.simplebook.data.remote.ProgressMetadata
 import com.ebookreader.simplebook.data.repository.BookRepository
 import com.ebookreader.simplebook.data.repository.BookmarkRepository
+import com.ebookreader.simplebook.data.repository.FolderRepository
 import com.ebookreader.simplebook.data.repository.HighlightRepository
 import com.ebookreader.simplebook.data.repository.NoteRepository
 import com.ebookreader.simplebook.data.repository.ReadingProgressRepository
+import com.ebookreader.simplebook.data.remote.FolderMetadata
+import com.ebookreader.simplebook.data.remote.FolderSyncData
 import com.ebookreader.simplebook.domain.model.Book
 import com.ebookreader.simplebook.domain.model.BookFormat
 import com.ebookreader.simplebook.domain.model.Bookmark
 import com.ebookreader.simplebook.domain.model.Highlight
+import com.ebookreader.simplebook.domain.model.Folder
 import com.ebookreader.simplebook.domain.model.Note
 import com.ebookreader.simplebook.domain.model.ReadingProgress
 import com.google.gson.Gson
@@ -52,6 +56,7 @@ class SyncService @Inject constructor(
     private val bookmarkRepository: BookmarkRepository,
     private val highlightRepository: HighlightRepository,
     private val noteRepository: NoteRepository,
+    private val folderRepository: FolderRepository,
     private val syncLogDao: SyncLogDao,
     private val gson: Gson,
     private val epubParser: EpubParser
@@ -67,6 +72,7 @@ class SyncService @Inject constructor(
 
     companion object {
         private const val TAG = "SyncService"
+        private const val FOLDERS_FILENAME = "folders.json"
     }
 
     // ── Public API ──────────────────────────────────────────────────
@@ -85,6 +91,8 @@ class SyncService @Inject constructor(
                 pullFromRemote()
                 Log.d(TAG, "syncAll: starting pushToRemote")
                 pushToRemote()
+                Log.d(TAG, "syncAll: starting syncFolders")
+                syncFolders()
                 val now = System.currentTimeMillis()
                 _lastSyncedAt.value = now
                 prefs.edit().putLong("last_synced_at", now).apply()
@@ -232,6 +240,7 @@ class SyncService @Inject constructor(
                 author = metadata.author,
                 updatedAt = metadata.updatedAt,
                 isDeleted = metadata.isDeleted,
+                folderId = metadata.folderId ?: localBook.folderId,
                 driveFileId = driveFolderId,
                 lastSyncedAt = now
             )
@@ -602,6 +611,121 @@ class SyncService @Inject constructor(
         }
     }
 
+    // ── Folder Sync ─────────────────────────────────────────────────
+
+    private suspend fun syncFolders() {
+        try {
+            val appFolderId = driveClient.getAppFolderId()
+
+            // Download remote folders.json
+            val remoteFolderFileId = driveClient.findFileInFolder(appFolderId, FOLDERS_FILENAME)
+            val remoteFolders = if (remoteFolderFileId != null) {
+                val bytes = driveClient.downloadFile(remoteFolderFileId)
+                if (bytes != null) {
+                    val json = String(bytes)
+                    val data = gson.fromJson(json, FolderSyncData::class.java)
+                    data.folders
+                } else emptyList()
+            } else emptyList()
+
+            // Get all local folders (including deleted)
+            val localFolders = folderRepository.getAllFoldersIncludingDeleted()
+
+            // LWW merge
+            val allUuids = (remoteFolders.map { it.uuid } + localFolders.map { it.uuid }).toSet()
+            val merged = mutableListOf<FolderMetadata>()
+
+            for (uuid in allUuids) {
+                val remote = remoteFolders.find { it.uuid == uuid }
+                val local = localFolders.find { it.uuid == uuid }
+
+                val result = when {
+                    remote != null && local != null -> {
+                        if (remote.updatedAt > local.updatedAt) remote
+                        else FolderMetadata(
+                            uuid = local.uuid,
+                            name = local.name,
+                            createdAt = local.createdAt,
+                            updatedAt = local.updatedAt,
+                            isDeleted = local.isDeleted,
+                            driveFileId = null
+                        )
+                    }
+                    remote != null -> remote
+                    local != null -> FolderMetadata(
+                        uuid = local.uuid,
+                        name = local.name,
+                        createdAt = local.createdAt,
+                        updatedAt = local.updatedAt,
+                        isDeleted = local.isDeleted,
+                        driveFileId = null
+                    )
+                    else -> null
+                }
+
+                if (result != null && !result.isDeleted) {
+                    // Write or update local
+                    val existing = folderRepository.getFolderByUuid(result.uuid)
+                    if (existing != null) {
+                        if (result.updatedAt > existing.updatedAt) {
+                            folderRepository.updateFolder(Folder(
+                                uuid = result.uuid,
+                                name = result.name,
+                                createdAt = result.createdAt,
+                                updatedAt = result.updatedAt,
+                                isDeleted = result.isDeleted
+                            ))
+                        }
+                    } else {
+                        folderRepository.addFolder(Folder(
+                            uuid = result.uuid,
+                            name = result.name,
+                            createdAt = result.createdAt,
+                            updatedAt = result.updatedAt,
+                            isDeleted = result.isDeleted
+                        ))
+                    }
+                } else if (result != null && result.isDeleted) {
+                    // Soft delete local
+                    val existing = folderRepository.getFolderByUuid(result.uuid)
+                    if (existing != null && !existing.isDeleted) {
+                        folderRepository.softDeleteFolder(result.uuid)
+                    }
+                }
+
+                if (result != null) merged.add(result)
+            }
+
+            // Build final merged list from both remote and local
+            val localMerged = localFolders.map {
+                FolderMetadata(
+                    uuid = it.uuid,
+                    name = it.name,
+                    createdAt = it.createdAt,
+                    updatedAt = it.updatedAt,
+                    isDeleted = it.isDeleted
+                )
+            }
+            val finalMerged = (merged + localMerged)
+                .groupBy { it.uuid }
+                .mapValues { (_, items) -> items.maxByOrNull { it.updatedAt }!! }
+                .values
+                .toList()
+
+            val syncData = FolderSyncData(folders = finalMerged)
+            val json = gson.toJson(syncData)
+            driveClient.uploadFile(
+                appFolderId,
+                FOLDERS_FILENAME,
+                json.toByteArray(),
+                "application/json"
+            )
+            Log.d(TAG, "syncFolders: completed, merged ${finalMerged.size} folders")
+        } catch (e: Exception) {
+            Log.e(TAG, "syncFolders: failed", e)
+        }
+    }
+
     // ── Sync Log ────────────────────────────────────────────────────
 
     private suspend fun recordLog(
@@ -645,6 +769,7 @@ class SyncService @Inject constructor(
             coverPath = book.coverPath,
             updatedAt = book.updatedAt,
             isDeleted = book.isDeleted,
+            folderId = book.folderId,
             progress = progress?.let {
                 ProgressMetadata(
                     uuid = it.uuid,
@@ -755,6 +880,7 @@ class SyncService @Inject constructor(
             coverPath = coverPath,
             fileSize = localFile.length(),
             lastSyncedAt = System.currentTimeMillis(),
+            folderId = metadata.folderId,
             driveFileId = folderId
         )
         bookRepository.addBook(book)
