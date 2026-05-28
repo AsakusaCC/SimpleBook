@@ -16,11 +16,20 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("simplebook-release.jks")
+            storePassword = "Sb2026!Rel"
+            keyAlias = "simplebook"
+            keyPassword = "Sb2026!Rel"
         }
     }
 
@@ -31,6 +40,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -108,6 +118,7 @@ dependencies {
 
     // Core
     implementation("androidx.core:core-ktx:1.13.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
 
     // Google Drive Sync
     implementation("com.google.android.gms:play-services-auth:21.3.0")
