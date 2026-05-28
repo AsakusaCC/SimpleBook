@@ -48,15 +48,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.ebookreader.simplebook.R
 import com.ebookreader.simplebook.domain.model.Book
 import com.ebookreader.simplebook.domain.model.LayoutMode
 import com.ebookreader.simplebook.domain.model.SortOrder
 import com.ebookreader.simplebook.domain.model.getStrings
 import com.ebookreader.simplebook.domain.service.SyncStatus
 import com.ebookreader.simplebook.ui.components.AdaptiveBookGrid
+import com.ebookreader.simplebook.ui.components.ShelfEmptyState
 import com.ebookreader.simplebook.ui.components.SpeedDialFAB
 import com.ebookreader.simplebook.ui.components.SpeedDialItem
 import com.ebookreader.simplebook.ui.sync.SyncStatusIcon
@@ -225,10 +228,10 @@ fun BookListScreen(
                 .padding(innerPadding)
         ) {
             if (currentItems.isEmpty()) {
-                Text(
-                    text = strings.noContent,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                ShelfEmptyState(
+                    mascotResource = painterResource(R.drawable.shelf_mascot),
+                    emptyText = strings.emptyShelfTitle,
+                    secondaryText = strings.emptyShelfHint,
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {

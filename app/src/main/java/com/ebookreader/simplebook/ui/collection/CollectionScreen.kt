@@ -43,12 +43,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.ebookreader.simplebook.R
 import com.ebookreader.simplebook.domain.model.Bookmark
 import com.ebookreader.simplebook.domain.model.Note
+import com.ebookreader.simplebook.ui.components.ShelfEmptyState
 import com.ebookreader.simplebook.ui.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -226,7 +230,16 @@ fun BookmarkGroupedList(
     onDelete: (Bookmark) -> Unit
 ) {
     if (groups.isEmpty()) {
-        EmptyState("还没有书签")
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            ShelfEmptyState(
+                mascotResource = painterResource(R.drawable.shelf_mascot),
+                emptyText = "还没有书签",
+                secondaryText = null
+            )
+        }
         return
     }
     val expandedState = remember { mutableStateMapOf<String, Boolean>() }
@@ -272,7 +285,16 @@ fun NoteGroupedList(
     onDelete: (Note) -> Unit
 ) {
     if (groups.isEmpty()) {
-        EmptyState("还没有笔记")
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            ShelfEmptyState(
+                mascotResource = painterResource(R.drawable.shelf_mascot),
+                emptyText = "还没有笔记",
+                secondaryText = null
+            )
+        }
         return
     }
     val expandedState = remember { mutableStateMapOf<String, Boolean>() }
@@ -456,22 +478,6 @@ private fun SwipeToDeleteItem(
         enableDismissFromStartToEnd = false
     ) {
         content()
-    }
-}
-
-@Composable
-private fun EmptyState(message: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
