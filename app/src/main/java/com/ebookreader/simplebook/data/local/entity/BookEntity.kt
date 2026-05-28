@@ -18,5 +18,6 @@ data class BookEntity(
     val updatedAt: Long,
     val isDeleted: Boolean = false,
     val lastSyncedAt: Long? = null,
-    val driveFileId: String? = null
+    val driveFileId: String? = null,
+    val folderId: String? = null
 )

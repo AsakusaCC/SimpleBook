@@ -6,6 +6,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.ebookreader.simplebook.data.local.dao.BookDao
 import com.ebookreader.simplebook.data.local.dao.BookmarkDao
+import com.ebookreader.simplebook.data.local.dao.FolderDao
 import com.ebookreader.simplebook.data.local.dao.HighlightDao
 import com.ebookreader.simplebook.data.local.dao.NoteDao
 import com.ebookreader.simplebook.data.local.dao.ReadingProgressDao
@@ -15,6 +16,7 @@ import com.ebookreader.simplebook.data.local.entity.BookmarkEntity
 import com.ebookreader.simplebook.data.local.entity.HighlightEntity
 import com.ebookreader.simplebook.data.local.entity.NoteEntity
 import com.ebookreader.simplebook.data.local.entity.ReadingProgressEntity
+import com.ebookreader.simplebook.data.local.entity.FolderEntity
 import com.ebookreader.simplebook.data.local.entity.SyncLogEntity
 
 @Database(
@@ -24,9 +26,10 @@ import com.ebookreader.simplebook.data.local.entity.SyncLogEntity
         BookmarkEntity::class,
         HighlightEntity::class,
         NoteEntity::class,
-        SyncLogEntity::class
+        SyncLogEntity::class,
+        FolderEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class SimpleBookDatabase : RoomDatabase() {
@@ -36,6 +39,7 @@ abstract class SimpleBookDatabase : RoomDatabase() {
     abstract fun highlightDao(): HighlightDao
     abstract fun noteDao(): NoteDao
     abstract fun syncLogDao(): SyncLogDao
+    abstract fun folderDao(): FolderDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -214,6 +218,23 @@ abstract class SimpleBookDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_notes_highlightUuid ON notes(highlightUuid)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_reading_progress_bookUuid ON reading_progress(bookUuid)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_logs_bookUuid ON sync_logs(bookUuid)")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS folders (
+                        uuid TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        isDeleted INTEGER NOT NULL DEFAULT 0,
+                        lastSyncedAt INTEGER,
+                        driveFileId TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("ALTER TABLE books ADD COLUMN folderId TEXT")
             }
         }
     }

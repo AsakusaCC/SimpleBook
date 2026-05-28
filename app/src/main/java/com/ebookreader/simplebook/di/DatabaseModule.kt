@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.ebookreader.simplebook.data.local.SimpleBookDatabase
 import com.ebookreader.simplebook.data.local.dao.BookDao
 import com.ebookreader.simplebook.data.local.dao.BookmarkDao
+import com.ebookreader.simplebook.data.local.dao.FolderDao
 import com.ebookreader.simplebook.data.local.dao.HighlightDao
 import com.ebookreader.simplebook.data.local.dao.NoteDao
 import com.ebookreader.simplebook.data.local.dao.ReadingProgressDao
@@ -32,7 +33,8 @@ object DatabaseModule {
         )
             .addMigrations(
                 SimpleBookDatabase.MIGRATION_1_2,
-                SimpleBookDatabase.MIGRATION_2_3
+                SimpleBookDatabase.MIGRATION_2_3,
+                SimpleBookDatabase.MIGRATION_3_4
             )
             .fallbackToDestructiveMigration()
             .build()
@@ -55,4 +57,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSyncLogDao(db: SimpleBookDatabase): SyncLogDao = db.syncLogDao()
+
+    @Provides
+    fun provideFolderDao(db: SimpleBookDatabase): FolderDao = db.folderDao()
 }
