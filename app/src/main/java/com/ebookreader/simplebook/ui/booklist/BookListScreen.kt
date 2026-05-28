@@ -48,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ebookreader.simplebook.domain.model.Book
@@ -254,9 +255,15 @@ fun BookListScreen(
             text = {
                 val folders by viewModel.allFoldersForDialog.collectAsState()
                 Column {
-                    // Scrollable folder list with max height
+                    // Section: Add to folder
+                    Text(
+                        text = strings.moveToFolder,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                     LazyColumn(
-                        modifier = Modifier.heightIn(max = 300.dp)
+                        modifier = Modifier.heightIn(max = 260.dp)
                     ) {
                         if (currentFolderId != null) {
                             item {
@@ -267,14 +274,14 @@ fun BookListScreen(
                                             viewModel.moveBookToFolder(book.uuid, null)
                                             longPressedBook = null
                                         }
-                                        .padding(vertical = 12.dp),
+                                        .padding(vertical = 10.dp),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
                                         Icons.Outlined.Home,
                                         contentDescription = null,
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(22.dp)
                                     )
                                     Text(strings.moveBackToShelf)
                                 }
@@ -288,17 +295,17 @@ fun BookListScreen(
                                         viewModel.moveBookToFolder(book.uuid, folder.uuid)
                                         longPressedBook = null
                                     }
-                                    .padding(vertical = 12.dp),
+                                    .padding(vertical = 10.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     Icons.Outlined.Folder,
                                     contentDescription = null,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(22.dp)
                                 )
-                                Column {
-                                    Text(folder.name)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(folder.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text(
                                         text = strings.bookCount(count),
                                         style = MaterialTheme.typography.bodySmall,
@@ -309,7 +316,7 @@ fun BookListScreen(
                         }
                     }
 
-                    // Delete always visible at bottom
+                    // Section: Delete
                     androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     Row(
                         modifier = Modifier
@@ -318,20 +325,17 @@ fun BookListScreen(
                                 viewModel.deleteBook(book)
                                 longPressedBook = null
                             }
-                            .padding(vertical = 8.dp),
+                            .padding(top = 4.dp, bottom = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             Icons.Outlined.Delete,
                             contentDescription = null,
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(22.dp),
                             tint = MaterialTheme.colorScheme.error
                         )
-                        Text(
-                            strings.deleteBook,
-                            color = MaterialTheme.colorScheme.error
-                        )
+                        Text(strings.deleteBook, color = MaterialTheme.colorScheme.error)
                     }
                 }
             },
