@@ -1,5 +1,6 @@
 package com.ebookreader.simplebook.ui.settings
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -33,6 +35,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -45,11 +48,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.ebookreader.simplebook.R
 import com.ebookreader.simplebook.domain.model.AppStrings
 import com.ebookreader.simplebook.domain.model.ReaderTheme
 import com.ebookreader.simplebook.domain.model.getStrings
@@ -194,11 +199,70 @@ fun SettingsScreen(
                     context.packageManager.getPackageInfo(context.packageName, 0).versionName
                 }.getOrDefault("0.8")
             }
-            Text(
-                "SimpleBook v${versionName}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Update state handling
+            val updateState by viewModel.updateState.collectAsState()
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "SimpleBook v${versionName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(12.dp))
+                OutlinedButton(onClick = { viewModel.checkForUpdate() }) {
+                    Text("检查更新")
+                }
+                when {
+                    updateState.checking -> {
+                        Spacer(Modifier.width(8.dp))
+                        Text("正在检查...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    updateState.error != null -> {
+                        Spacer(Modifier.width(8.dp))
+                        Text(updateState.error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
+            // New version dialog
+            if (updateState.latestVersion != null && updateState.downloadUrl != null) {
+                val latestVer = updateState.latestVersion!!
+                val dlUrl = updateState.downloadUrl!!
+                AlertDialog(
+                        onDismissRequest = { viewModel.dismissUpdate() },
+                        text = {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Image(
+                                    painter = painterResource(R.drawable.mizuki_logo),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(120.dp)
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    "发现新版本 $latestVer",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "当前版本 v${versionName}，是否下载更新？",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                viewModel.downloadUpdate(dlUrl, latestVer)
+                            }) { Text("下载") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { viewModel.dismissUpdate() }) { Text(strings.cancel) }
+                        }
+                    )
+            }
 
             // ── Google Drive 同步 ──
             HorizontalDivider()

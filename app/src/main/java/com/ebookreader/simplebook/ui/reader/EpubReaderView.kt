@@ -22,6 +22,7 @@ fun EpubReaderView(
     onChapterFinished: () -> Unit,
     backgroundColor: Long = 0xFFFFFFFF,
     textColor: Long = 0xFF000000,
+    accentColor: Long = 0xFF6750A4,
     fontSize: Float = 16f,
     lineHeight: Float = 1.5f,
     hasNextChapter: Boolean = true,
@@ -36,8 +37,8 @@ fun EpubReaderView(
         onDispose { webView?.destroy() }
     }
 
-    val styledContent = remember(htmlContent, backgroundColor, textColor, fontSize, lineHeight, hasNextChapter, nextChapterText, allReadText) {
-        buildStyledHtml(htmlContent, backgroundColor, textColor, fontSize, lineHeight, hasNextChapter, nextChapterText, allReadText)
+    val styledContent = remember(htmlContent, backgroundColor, textColor, accentColor, fontSize, lineHeight, hasNextChapter, nextChapterText, allReadText) {
+        buildStyledHtml(htmlContent, backgroundColor, textColor, accentColor, fontSize, lineHeight, hasNextChapter, nextChapterText, allReadText)
     }
 
     AndroidView(
@@ -62,6 +63,7 @@ fun EpubReaderView(
                                     var percentage = scrollHeight > 0 ? window.scrollY / scrollHeight : 0;
                                     Android.onScrollPositionChanged(percentage);
                                 };
+                                document.onscroll();
                                 document.addEventListener('touchstart', function(e) {
                                     touchStartX = e.touches[0].clientX;
                                     touchStartY = e.touches[0].clientY;
@@ -117,6 +119,7 @@ private fun buildStyledHtml(
     html: String,
     bgColor: Long,
     textColor: Long,
+    accentColor: Long,
     fontSize: Float,
     lineHeight: Float,
     hasNextChapter: Boolean,
@@ -125,6 +128,7 @@ private fun buildStyledHtml(
 ): String {
     val bgColorHex = String.format("#%06X", 0x00FFFFFF and bgColor.toInt())
     val textColorHex = String.format("#%06X", 0x00FFFFFF and textColor.toInt())
+    val accentColorHex = String.format("#%06X", 0x00FFFFFF and accentColor.toInt())
 
     // Strip XML declaration and DOCTYPE
     var cleaned = html
@@ -175,7 +179,7 @@ private fun buildStyledHtml(
     // Next chapter navigation link
     val nextChapterHtml = if (hasNextChapter) {
         """<div style="text-align:center;padding:32px 16px;border-top:1px solid #e0e0e0;margin-top:40px;">
-        <a href="javascript:void(0)" onclick="Android.nextChapter()" style="font-size:16px;color:#6750A4;text-decoration:none;padding:12px 32px;display:inline-block;">$nextChapterText</a>
+        <a href="javascript:void(0)" onclick="Android.nextChapter()" style="font-size:16px;color:$accentColorHex;text-decoration:none;padding:12px 32px;display:inline-block;">$nextChapterText</a>
         </div>"""
     } else {
         """<div style="text-align:center;padding:32px 16px;color:#999;font-size:14px;">$allReadText</div>"""

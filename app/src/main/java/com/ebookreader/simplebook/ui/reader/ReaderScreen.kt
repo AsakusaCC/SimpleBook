@@ -218,6 +218,7 @@ private fun ReaderPane(
                         onChapterFinished = onNextChapter,
                         backgroundColor = settings.backgroundColor,
                         textColor = settings.textColor,
+                        accentColor = settings.theme.accentColor,
                         fontSize = settings.fontSize,
                         lineHeight = settings.lineHeight,
                         hasNextChapter = currentChapterIndex < chapters.size - 1,

@@ -338,7 +338,7 @@ class ReaderViewModel @Inject constructor(
     private fun debounceSaveProgress() {
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
-            delay(5000)
+            delay(1000)
             saveCurrentProgress()
         }
     }
