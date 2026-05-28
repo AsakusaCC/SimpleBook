@@ -1,6 +1,7 @@
 package com.ebookreader.simplebook.ui.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,19 +29,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ebookreader.simplebook.domain.model.Folder
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FolderCard(
     folder: Folder,
     bookCount: Int,
     bookCountText: String,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     compact: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -91,19 +97,24 @@ fun FolderCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FolderListItem(
     folder: Folder,
     bookCount: Int,
     bookCountText: String,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
                 .padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically

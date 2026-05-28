@@ -83,6 +83,7 @@ fun BookListScreen(
     var showSortMenu by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
     var longPressedBook by remember { mutableStateOf<Book?>(null) }
+    var folderToDelete by remember { mutableStateOf<com.ebookreader.simplebook.domain.model.Folder?>(null) }
 
     val syncStatus by syncViewModel.syncStatus.collectAsState()
     val isSignedIn = syncViewModel.isSignedIn
@@ -182,33 +183,7 @@ fun BookListScreen(
                 }
             )
         },
-        modifier = modifier
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            if (currentItems.isEmpty()) {
-                Text(
-                    text = strings.noContent,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else {
-                AdaptiveBookGrid(
-                    items = currentItems,
-                    layoutMode = settings.layoutMode,
-                    windowWidthSizeClass = windowWidthSizeClass,
-                    onBookClick = onBookClick,
-                    onBookLongClick = { book -> longPressedBook = book },
-                    onFolderClick = { folder -> viewModel.enterFolder(folder.uuid, folder.name) },
-                    unknownAuthorText = strings.unknownAuthor,
-                    bookCountText = { count -> strings.bookCount(count) }
-                )
-            }
-
+        floatingActionButton = {
             SpeedDialFAB(
                 items = listOf(
                     SpeedDialItem(
@@ -234,11 +209,36 @@ fun BookListScreen(
                     )
                 ),
                 isExpanded = isSpeedDialExpanded,
-                onToggle = { viewModel.toggleSpeedDial() },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 16.dp, bottom = 16.dp)
+                onToggle = { viewModel.toggleSpeedDial() }
             )
+        },
+        modifier = modifier
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            if (currentItems.isEmpty()) {
+                Text(
+                    text = strings.noContent,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else {
+                AdaptiveBookGrid(
+                    items = currentItems,
+                    layoutMode = settings.layoutMode,
+                    windowWidthSizeClass = windowWidthSizeClass,
+                    onBookClick = onBookClick,
+                    onBookLongClick = { book -> longPressedBook = book },
+                    onFolderClick = { folder -> viewModel.enterFolder(folder.uuid, folder.name) },
+                    onFolderLongClick = { folder -> folderToDelete = folder },
+                    unknownAuthorText = strings.unknownAuthor,
+                    bookCountText = { count -> strings.bookCount(count) }
+                )
+            }
 
             DropdownMenu(
                 expanded = showSortMenu,
@@ -374,6 +374,30 @@ fun BookListScreen(
                     showNewFolderDialog = false
                     newFolderName = ""
                 }) {
+                    Text(strings.cancel)
+                }
+            }
+        )
+    }
+
+    // Delete folder dialog
+    folderToDelete?.let { folder ->
+        AlertDialog(
+            onDismissRequest = { folderToDelete = null },
+            title = { Text(strings.deleteBook) },
+            text = { Text("确认删除文件夹「${folder.name}」吗？文件夹内的书籍将移回主书架。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteFolder(folder.uuid)
+                        folderToDelete = null
+                    }
+                ) {
+                    Text(strings.delete)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { folderToDelete = null }) {
                     Text(strings.cancel)
                 }
             }

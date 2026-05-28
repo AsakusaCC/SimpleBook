@@ -102,11 +102,12 @@ class BookListViewModel @Inject constructor(
             bookService.getShelfBooks().collect { _shelfBooks.value = it }
         }
         viewModelScope.launch {
-            folderService.getAllFolders().collect { folders ->
-                _foldersWithCount.value = folders.map { folder ->
+            // Refresh folder counts whenever folders OR books change
+            combine(folderService.getAllFolders(), bookService.getAllBooks()) { folders, _ ->
+                folders.map { folder ->
                     folder to folderService.getBookCountInFolder(folder.uuid)
                 }
-            }
+            }.collect { _foldersWithCount.value = it }
         }
         viewModelScope.launch {
             _currentFolderId.collect { folderId ->
@@ -186,6 +187,17 @@ class BookListViewModel @Inject constructor(
     fun moveBookToFolder(bookUuid: String, folderId: String?) {
         viewModelScope.launch {
             bookService.moveBookToFolder(bookUuid, folderId)
+        }
+    }
+
+    fun deleteFolder(folderUuid: String) {
+        viewModelScope.launch {
+            // Move all books in this folder back to shelf
+            val books = bookService.getAllBooksNow().filter { it.folderId == folderUuid }
+            for (book in books) {
+                bookService.moveBookToFolder(book.uuid, null)
+            }
+            folderService.softDeleteFolder(folderUuid)
         }
     }
 }

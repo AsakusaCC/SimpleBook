@@ -25,6 +25,7 @@ fun AdaptiveBookGrid(
     onBookClick: (Book) -> Unit,
     onBookLongClick: (Book) -> Unit,
     onFolderClick: (Folder) -> Unit,
+    onFolderLongClick: (Folder) -> Unit = {},
     unknownAuthorText: String = "未知",
     bookCountText: (Int) -> String = { "共 $it 本" },
     modifier: Modifier = Modifier
@@ -53,7 +54,8 @@ fun AdaptiveBookGrid(
                         folder = item.folder,
                         bookCount = item.bookCount,
                         bookCountText = bookCountText(item.bookCount),
-                        onClick = { onFolderClick(item.folder) }
+                        onClick = { onFolderClick(item.folder) },
+                        onLongClick = { onFolderLongClick(item.folder) }
                     )
                 }
             }
@@ -95,6 +97,7 @@ fun AdaptiveBookGrid(
                         bookCount = item.bookCount,
                         bookCountText = bookCountText(item.bookCount),
                         onClick = { onFolderClick(item.folder) },
+                        onLongClick = { onFolderLongClick(item.folder) },
                         compact = isSmall
                     )
                 }

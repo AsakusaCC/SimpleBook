@@ -18,6 +18,8 @@ class BookService @Inject constructor(
 ) {
     fun getAllBooks(): Flow<List<Book>> = bookRepository.getAllBooks()
 
+    suspend fun getAllBooksNow(): List<Book> = bookRepository.getAllBooksNow()
+
     suspend fun getBookByUuid(uuid: String): Book? = bookRepository.getBookByUuid(uuid)
 
     suspend fun importBook(file: File, originalName: String = file.nameWithoutExtension): Book {
