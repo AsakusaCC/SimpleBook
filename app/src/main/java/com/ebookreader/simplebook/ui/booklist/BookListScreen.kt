@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -81,7 +82,6 @@ fun BookListScreen(
 
     var showLayoutMenu by remember { mutableStateOf(false) }
     var showNewFolderDialog by remember { mutableStateOf(false) }
-    var showSortMenu by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
     var longPressedBook by remember { mutableStateOf<Book?>(null) }
     var folderToDelete by remember { mutableStateOf<com.ebookreader.simplebook.domain.model.Folder?>(null) }
@@ -205,8 +205,11 @@ fun BookListScreen(
                     ),
                     SpeedDialItem(
                         icon = { Icon(Icons.Default.Sort, contentDescription = null) },
-                        label = strings.sort,
-                        onClick = { showSortMenu = true }
+                        label = if (settings.sortOrder == SortOrder.LAST_READ) strings.sortByLastRead else strings.sortByName,
+                        onClick = {
+                            val next = if (settings.sortOrder == SortOrder.LAST_READ) SortOrder.NAME else SortOrder.LAST_READ
+                            viewModel.updateSortOrder(next)
+                        }
                     )
                 ),
                 isExpanded = isSpeedDialExpanded,
@@ -240,31 +243,6 @@ fun BookListScreen(
                     bookCountText = { count -> strings.bookCount(count) }
                 )
             }
-
-            DropdownMenu(
-                expanded = showSortMenu,
-                onDismissRequest = {
-                    showSortMenu = false
-                    viewModel.dismissSpeedDial()
-                }
-            ) {
-                DropdownMenuItem(
-                    text = { Text(strings.sortByLastRead) },
-                    onClick = {
-                        viewModel.updateSortOrder(SortOrder.LAST_READ)
-                        showSortMenu = false
-                        viewModel.dismissSpeedDial()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text(strings.sortByName) },
-                    onClick = {
-                        viewModel.updateSortOrder(SortOrder.NAME)
-                        showSortMenu = false
-                        viewModel.dismissSpeedDial()
-                    }
-                )
-            }
         }
     }
 
@@ -275,15 +253,39 @@ fun BookListScreen(
             title = { Text(book.title) },
             text = {
                 val folders by viewModel.allFoldersForDialog.collectAsState()
-                LazyColumn {
-                    // Move to folder section
-                    if (currentFolderId != null) {
-                        item {
+                Column {
+                    // Scrollable folder list with max height
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 300.dp)
+                    ) {
+                        if (currentFolderId != null) {
+                            item {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            viewModel.moveBookToFolder(book.uuid, null)
+                                            longPressedBook = null
+                                        }
+                                        .padding(vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Home,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(strings.moveBackToShelf)
+                                }
+                            }
+                        }
+                        items(folders) { (folder, count) ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        viewModel.moveBookToFolder(book.uuid, null)
+                                        viewModel.moveBookToFolder(book.uuid, folder.uuid)
                                         longPressedBook = null
                                     }
                                     .padding(vertical = 12.dp),
@@ -291,71 +293,45 @@ fun BookListScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    Icons.Outlined.Home,
+                                    Icons.Outlined.Folder,
                                     contentDescription = null,
                                     modifier = Modifier.size(24.dp)
                                 )
-                                Text(strings.moveBackToShelf)
-                            }
-                        }
-                    }
-                    items(folders) { (folder, count) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.moveBookToFolder(book.uuid, folder.uuid)
-                                    longPressedBook = null
+                                Column {
+                                    Text(folder.name)
+                                    Text(
+                                        text = strings.bookCount(count),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
-                                .padding(vertical = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Outlined.Folder,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Column {
-                                Text(folder.name)
-                                Text(
-                                    text = strings.bookCount(count),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                             }
                         }
                     }
 
-                    // Divider + delete
-                    item {
-                        androidx.compose.material3.HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 8.dp)
+                    // Delete always visible at bottom
+                    androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.deleteBook(book)
+                                longPressedBook = null
+                            }
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.error
                         )
-                    }
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.deleteBook(book)
-                                    longPressedBook = null
-                                }
-                                .padding(vertical = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Outlined.Delete,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                            Text(
-                                strings.deleteBook,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
+                        Text(
+                            strings.deleteBook,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             },

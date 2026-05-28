@@ -1,6 +1,7 @@
 package com.ebookreader.simplebook.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +41,9 @@ fun FolderCard(
     compact: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val bgColor = MaterialTheme.colorScheme.primaryContainer
+    val fgColor = MaterialTheme.colorScheme.onPrimaryContainer
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -51,20 +55,17 @@ fun FolderCard(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(if (compact) 8.dp else 12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            ),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(3f / 4f),
+                    .aspectRatio(3f / 4f)
+                    .background(bgColor),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
                     modifier = Modifier.padding(
                         horizontal = if (compact) 6.dp else 16.dp,
                         vertical = if (compact) 10.dp else 20.dp
@@ -73,26 +74,43 @@ fun FolderCard(
                     Icon(
                         imageVector = Icons.Outlined.Folder,
                         contentDescription = null,
-                        modifier = Modifier.size(if (compact) 28.dp else 64.dp),
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
+                        modifier = Modifier.size(if (compact) 20.dp else 32.dp),
+                        tint = fgColor.copy(alpha = 0.5f)
                     )
-                    Spacer(modifier = Modifier.height(if (compact) 4.dp else 8.dp))
-                    Text(
-                        text = folder.name,
-                        style = if (compact) MaterialTheme.typography.labelSmall
-                            else MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    Text(
-                        text = bookCountText,
-                        style = if (compact) MaterialTheme.typography.labelSmall
-                            else MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
-                    )
+                    if (!compact) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = folder.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = fgColor.copy(alpha = 0.65f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
+        }
+        // Name and count below the card (same as BookCard)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = if (compact) 4.dp else 6.dp)
+        ) {
+            Text(
+                text = folder.name,
+                style = if (compact) MaterialTheme.typography.bodySmall
+                    else MaterialTheme.typography.titleSmall,
+                maxLines = if (compact) 1 else 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = bookCountText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
     }
 }
