@@ -59,4 +59,11 @@ class BookService @Inject constructor(
     }
 
     suspend fun softDeleteBook(uuid: String) = bookRepository.softDeleteBook(uuid)
+
+    fun getShelfBooks(): Flow<List<Book>> = bookRepository.getShelfBooks()
+
+    fun getBooksInFolder(folderId: String): Flow<List<Book>> = bookRepository.getBooksInFolder(folderId)
+
+    suspend fun moveBookToFolder(bookUuid: String, folderId: String?) =
+        bookRepository.moveBookToFolder(bookUuid, folderId)
 }

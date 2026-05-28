@@ -40,17 +40,28 @@ class BookRepositoryImpl @Inject constructor(
     override suspend fun getAllBooksIncludingDeleted(): List<Book> =
         bookDao.getAllBooksIncludingDeleted().map { it.toDomain() }
 
+    override fun getShelfBooks(): Flow<List<Book>> =
+        bookDao.getShelfBooks().map { entities -> entities.map { it.toDomain() } }
+
+    override fun getBooksInFolder(folderId: String): Flow<List<Book>> =
+        bookDao.getBooksInFolder(folderId).map { entities -> entities.map { it.toDomain() } }
+
+    override suspend fun moveBookToFolder(bookUuid: String, folderId: String?) {
+        val book = bookDao.getBookByUuid(bookUuid) ?: return
+        bookDao.update(book.copy(folderId = folderId, updatedAt = System.currentTimeMillis()))
+    }
+
     private fun BookEntity.toDomain() = Book(
         uuid = uuid, title = title, author = author, filePath = filePath,
         format = BookFormat.valueOf(format), coverPath = coverPath, fileSize = fileSize,
         addedAt = addedAt, lastReadAt = lastReadAt, updatedAt = updatedAt,
-        isDeleted = isDeleted, lastSyncedAt = lastSyncedAt, driveFileId = driveFileId
+        isDeleted = isDeleted, lastSyncedAt = lastSyncedAt, folderId = folderId, driveFileId = driveFileId
     )
 
     private fun Book.toEntity() = BookEntity(
         uuid = uuid, title = title, author = author, filePath = filePath,
         format = format.name, coverPath = coverPath, fileSize = fileSize,
         addedAt = addedAt, lastReadAt = lastReadAt, updatedAt = updatedAt,
-        isDeleted = isDeleted, lastSyncedAt = lastSyncedAt, driveFileId = driveFileId
+        isDeleted = isDeleted, lastSyncedAt = lastSyncedAt, folderId = folderId, driveFileId = driveFileId
     )
 }

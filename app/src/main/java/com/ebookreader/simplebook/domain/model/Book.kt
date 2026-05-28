@@ -13,5 +13,6 @@ data class Book(
     val updatedAt: Long = System.currentTimeMillis(),
     val isDeleted: Boolean = false,
     val lastSyncedAt: Long? = null,
+    val folderId: String? = null,
     val driveFileId: String? = null
 )

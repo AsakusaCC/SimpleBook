@@ -36,4 +36,10 @@ interface BookDao {
 
     @Query("SELECT * FROM books")
     suspend fun getAllBooksIncludingDeleted(): List<BookEntity>
+
+    @Query("SELECT * FROM books WHERE folderId IS NULL AND isDeleted = 0 ORDER BY lastReadAt DESC NULLS LAST, addedAt DESC")
+    fun getShelfBooks(): Flow<List<BookEntity>>
+
+    @Query("SELECT * FROM books WHERE folderId = :folderId AND isDeleted = 0 ORDER BY lastReadAt DESC NULLS LAST, addedAt DESC")
+    fun getBooksInFolder(folderId: String): Flow<List<BookEntity>>
 }
