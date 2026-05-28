@@ -5,10 +5,12 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
-import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ebookreader.simplebook.domain.model.LayoutMode
 import com.ebookreader.simplebook.domain.model.ReaderSettings
+import com.ebookreader.simplebook.domain.model.ReaderTheme
+import com.ebookreader.simplebook.domain.model.SortOrder
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -24,18 +26,28 @@ class SettingsDataStore @Inject constructor(
     companion object {
         val FONT_SIZE = floatPreferencesKey("font_size")
         val LINE_HEIGHT = floatPreferencesKey("line_height")
-        val BACKGROUND_COLOR = longPreferencesKey("background_color")
-        val TEXT_COLOR = longPreferencesKey("text_color")
-        val LANGUAGE = stringPreferencesKey("language")
+        val THEME = stringPreferencesKey("reader_theme")
+        val LAYOUT_MODE = stringPreferencesKey("layout_mode")
+        val SORT_ORDER = stringPreferencesKey("sort_order")
+        // Legacy keys kept for migration
+        private val BACKGROUND_COLOR_LEGACY = androidx.datastore.preferences.core.longPreferencesKey("background_color")
     }
 
     val settings: Flow<ReaderSettings> = context.dataStore.data.map { prefs ->
+        val themeKey = prefs[THEME]
+        val theme = if (themeKey != null) {
+            ReaderTheme.fromKey(themeKey)
+        } else {
+            val legacyBg = prefs[BACKGROUND_COLOR_LEGACY]
+            if (legacyBg != null) ReaderTheme.fromLegacyBackgroundColor(legacyBg) else ReaderTheme.DEFAULT_WHITE
+        }
         ReaderSettings(
             fontSize = prefs[FONT_SIZE] ?: 16f,
             lineHeight = prefs[LINE_HEIGHT] ?: 1.5f,
-            backgroundColor = prefs[BACKGROUND_COLOR] ?: 0xFFFFFFFF,
-            textColor = prefs[TEXT_COLOR] ?: 0xFF000000,
-            language = prefs[LANGUAGE] ?: "zh"
+            theme = theme,
+            language = prefs[stringPreferencesKey("language")] ?: "zh",
+            layoutMode = LayoutMode.fromKey(prefs[LAYOUT_MODE]),
+            sortOrder = SortOrder.fromKey(prefs[SORT_ORDER])
         )
     }
 
@@ -47,15 +59,19 @@ class SettingsDataStore @Inject constructor(
         context.dataStore.edit { it[LINE_HEIGHT] = height }
     }
 
-    suspend fun updateBackgroundColor(color: Long) {
-        context.dataStore.edit { it[BACKGROUND_COLOR] = color }
-    }
-
-    suspend fun updateTextColor(color: Long) {
-        context.dataStore.edit { it[TEXT_COLOR] = color }
+    suspend fun updateTheme(theme: ReaderTheme) {
+        context.dataStore.edit { it[THEME] = theme.key }
     }
 
     suspend fun updateLanguage(language: String) {
-        context.dataStore.edit { it[LANGUAGE] = language }
+        context.dataStore.edit { it[stringPreferencesKey("language")] = language }
+    }
+
+    suspend fun updateLayoutMode(layoutMode: LayoutMode) {
+        context.dataStore.edit { it[LAYOUT_MODE] = layoutMode.key }
+    }
+
+    suspend fun updateSortOrder(sortOrder: SortOrder) {
+        context.dataStore.edit { it[SORT_ORDER] = sortOrder.key }
     }
 }
