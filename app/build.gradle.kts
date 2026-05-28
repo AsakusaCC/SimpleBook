@@ -7,6 +7,13 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+import java.util.Properties
+
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.ebookreader.simplebook"
     compileSdk = 36
@@ -27,9 +34,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("simplebook-release.jks")
-            storePassword = "Sb2026!Rel"
+            storePassword = localProps.getProperty("SIGNING_STORE_PASSWORD", "")
             keyAlias = "simplebook"
-            keyPassword = "Sb2026!Rel"
+            keyPassword = localProps.getProperty("SIGNING_KEY_PASSWORD", "")
         }
     }
 
