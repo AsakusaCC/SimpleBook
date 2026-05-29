@@ -74,15 +74,6 @@ class SyncService @Inject constructor(
     companion object {
         private const val TAG = "SyncService"
         private const val FOLDERS_FILENAME = "folders.json"
-
-        private fun parseModifiedTime(isoTime: String): Long? {
-            return try {
-                com.google.api.client.util.DateTime(isoTime).value
-            } catch (e: Exception) {
-                Log.w(TAG, "parseModifiedTime: failed to parse '$isoTime'", e)
-                null
-            }
-        }
     }
 
     // ── Public API ──────────────────────────────────────────────────
@@ -168,6 +159,10 @@ class SyncService @Inject constructor(
             )
             Log.d(TAG, "pushToRemote: metadata upload result=$uploadResult, folderId=$bookFolderId, jsonLen=${metadataJson.length}")
 
+            // Touch folder so its modifiedTime reflects this update,
+            // enabling incremental pull to detect the change
+            driveClient.touchFolder(bookFolderId)
+
             // Update lastSyncedAt (preserves driveFileId from currentBook)
             bookRepository.updateBook(updatedBook.copy(lastSyncedAt = now))
         }
@@ -189,19 +184,6 @@ class SyncService @Inject constructor(
             if (!folderName.startsWith("book_")) continue
             Log.d(TAG, "pullFromRemote: processing folder=$folderName, folderId=$folderId")
 
-            // 提前计算 bookUuid 和 localBook（后续多处使用）
-            val bookUuid = folderName.removePrefix("book_")
-            val localBook = bookRepository.getBookByUuid(bookUuid)
-
-            // 增量 Pull：如果本地存在且远端未修改，跳过
-            if (localBook != null && localBook.lastSyncedAt != null && fi.modifiedTime != null) {
-                val remoteModifiedMs = parseModifiedTime(fi.modifiedTime)
-                if (remoteModifiedMs != null && remoteModifiedMs <= localBook.lastSyncedAt!! + 60_000) {
-                    Log.d(TAG, "pullFromRemote: skipping unchanged folder=$folderName, remoteModified=$remoteModifiedMs, localSyncedAt=${localBook.lastSyncedAt}")
-                    continue
-                }
-            }
-
             // Download metadata.json from this folder
             val metadataFileId = driveClient.findFileInFolder(folderId, "metadata.json")
             if (metadataFileId == null) {
@@ -221,14 +203,17 @@ class SyncService @Inject constructor(
                 continue
             }
 
-            val effectiveBookUuid = metadata.bookUuid ?: bookUuid
-            Log.d(TAG, "pullFromRemote: folder=$folderName, bookUuid=$effectiveBookUuid, metadata.bookUuid=${metadata.bookUuid}, metadata.isDeleted=${metadata.isDeleted}")
+            val bookUuid = metadata.bookUuid ?: folderName.removePrefix("book_")
+            Log.d(TAG, "pullFromRemote: folder=$folderName, bookUuid=$bookUuid, metadata.bookUuid=${metadata.bookUuid}, metadata.isDeleted=${metadata.isDeleted}")
 
             // Skip old-format folders (pre-UUID, numeric IDs like book_1, book_2)
             if (metadata.bookUuid == null) {
                 Log.w(TAG, "pullFromRemote: skipping old-format folder $folderName (no bookUuid in metadata)")
                 continue
             }
+
+            // Find local book by uuid
+            val localBook = bookRepository.getBookByUuid(bookUuid)
 
             if (localBook == null && !metadata.isDeleted) {
                 // New book from remote — download it
@@ -239,7 +224,7 @@ class SyncService @Inject constructor(
                 Log.d(TAG, "pullFromRemote: existing local book, merging: ${metadata.title}")
                 mergeLocalBook(localBook, metadata, folderId)
             } else {
-                Log.d(TAG, "pullFromRemote: skipping deleted book or already exists: bookUuid=$effectiveBookUuid")
+                Log.d(TAG, "pullFromRemote: skipping deleted book or already exists: bookUuid=$bookUuid")
             }
         }
     }

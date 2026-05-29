@@ -144,6 +144,13 @@ class GoogleDriveClient @Inject constructor(
         }
     }
 
+    suspend fun touchFolder(folderId: String) = withContext(Dispatchers.IO) {
+        val drive = drive ?: return@withContext
+        drive.files().update(folderId, com.google.api.services.drive.model.File().apply {
+            modifiedTime = com.google.api.client.util.DateTime(System.currentTimeMillis())
+        }).setFields("id").execute()
+    }
+
     suspend fun deleteFile(fileId: String) = withContext(Dispatchers.IO) {
         val drive = drive ?: return@withContext
         drive.files().delete(fileId).execute()
