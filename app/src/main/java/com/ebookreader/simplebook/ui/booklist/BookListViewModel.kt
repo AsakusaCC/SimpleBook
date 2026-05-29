@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -99,14 +98,16 @@ class BookListViewModel @Inject constructor(
             })
             folderItems + bookItems
         }
-    }.onEach { _isDataReady.value = true }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val allFoldersForDialog: StateFlow<List<Pair<Folder, Int>>> = _foldersWithCount
 
     init {
         viewModelScope.launch {
-            bookService.getShelfBooks().collect { _shelfBooks.value = it }
+            bookService.getShelfBooks().collect {
+                _shelfBooks.value = it
+                if (!_isDataReady.value) _isDataReady.value = true
+            }
         }
         viewModelScope.launch {
             // Refresh folder counts whenever folders OR books change
