@@ -42,6 +42,7 @@ import androidx.navigation.compose.rememberNavController
 import com.ebookreader.simplebook.domain.model.getStrings
 import com.ebookreader.simplebook.ui.components.AdaptiveScaffold
 import com.ebookreader.simplebook.ui.navigation.SimpleBookNavHost
+import com.ebookreader.simplebook.ui.booklist.BookListViewModel
 import com.ebookreader.simplebook.ui.settings.SettingsViewModel
 import com.ebookreader.simplebook.ui.sync.SyncViewModel
 import com.ebookreader.simplebook.ui.theme.SimpleBookTheme
@@ -67,6 +68,8 @@ class MainActivity : ComponentActivity() {
             }
 
             SimpleBookTheme(readerTheme = settings.theme) {
+                val bookListViewModel: BookListViewModel = hiltViewModel()
+                val isDataReady by bookListViewModel.isDataReady.collectAsState()
                 var showSplash by remember { mutableStateOf(true) }
 
                 if (showSplash) {
@@ -91,9 +94,11 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
-                    LaunchedEffect(Unit) {
-                        delay(1500)
-                        showSplash = false
+                    LaunchedEffect(isDataReady) {
+                        if (isDataReady) {
+                            delay(300)
+                            showSplash = false
+                        }
                     }
                 }
 

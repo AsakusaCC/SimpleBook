@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -70,6 +71,9 @@ class BookListViewModel @Inject constructor(
         ShelfData(shelfBooks, foldersWithCount, folderBooks, progressMap)
     }
 
+    private val _isDataReady = MutableStateFlow(false)
+    val isDataReady: StateFlow<Boolean> = _isDataReady.asStateFlow()
+
     val currentItems: StateFlow<List<ShelfItem>> = combine(
         _currentFolderId,
         _shelfData,
@@ -95,7 +99,8 @@ class BookListViewModel @Inject constructor(
             })
             folderItems + bookItems
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.onEach { _isDataReady.value = true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val allFoldersForDialog: StateFlow<List<Pair<Folder, Int>>> = _foldersWithCount
 
