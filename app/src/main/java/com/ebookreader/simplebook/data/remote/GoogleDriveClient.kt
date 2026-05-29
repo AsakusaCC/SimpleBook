@@ -35,7 +35,7 @@ class GoogleDriveClient @Inject constructor(
             ) { request ->
                 credential.initialize(request)
                 request.readTimeout = 300000
-                request.connectTimeout = 60000
+                request.connectTimeout = 15000
             }.setApplicationName("SimpleBook").build()
         }
 

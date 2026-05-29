@@ -98,7 +98,7 @@ class BookListViewModel @Inject constructor(
             })
             folderItems + bookItems
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val allFoldersForDialog: StateFlow<List<Pair<Folder, Int>>> = _foldersWithCount
 

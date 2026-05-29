@@ -41,6 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +58,7 @@ import com.ebookreader.simplebook.domain.model.Book
 import com.ebookreader.simplebook.domain.model.LayoutMode
 import com.ebookreader.simplebook.domain.model.SortOrder
 import com.ebookreader.simplebook.domain.model.getStrings
+import kotlinx.coroutines.delay
 import com.ebookreader.simplebook.domain.service.SyncStatus
 import com.ebookreader.simplebook.ui.components.AdaptiveBookGrid
 import com.ebookreader.simplebook.ui.components.ShelfEmptyState
@@ -228,12 +230,19 @@ fun BookListScreen(
                 .padding(innerPadding)
         ) {
             if (currentItems.isEmpty()) {
-                ShelfEmptyState(
-                    mascotResource = painterResource(R.drawable.shelf_mascot),
-                    emptyText = strings.emptyShelfTitle,
-                    secondaryText = strings.emptyShelfHint,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                var showEmpty by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    delay(600)
+                    showEmpty = true
+                }
+                if (showEmpty) {
+                    ShelfEmptyState(
+                        mascotResource = painterResource(R.drawable.shelf_mascot),
+                        emptyText = strings.emptyShelfTitle,
+                        secondaryText = strings.emptyShelfHint,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
             } else {
                 AdaptiveBookGrid(
                     items = currentItems,

@@ -7,13 +7,13 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.ebookreader.simplebook.R
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,10 +25,12 @@ class SyncForegroundService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Main)
 
     companion object {
+        private const val TAG = "SyncForegroundSvc"
         private const val CHANNEL_ID = "sync_channel"
         private const val NOTIFICATION_ID = 1
 
         fun start(context: Context) {
+            Log.d(TAG, "start: requesting start")
             val intent = Intent(context, SyncForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -38,44 +40,69 @@ class SyncForegroundService : Service() {
         }
 
         fun stop(context: Context) {
+            Log.d(TAG, "stop: requesting stop")
             context.stopService(Intent(context, SyncForegroundService::class.java))
         }
     }
 
     override fun onCreate() {
         super.onCreate()
+        Log.d(TAG, "onCreate: service created")
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification("正在同步…"))
+        Log.d(TAG, "onCreate: startForeground called")
+
+        // If sync already completed before we started, stop immediately
+        if (syncService.syncStatus.value !is SyncStatus.Syncing) {
+            Log.d(TAG, "onCreate: sync not in progress (status=${syncService.syncStatus.value}), stopping")
+            stopSelf()
+            return
+        }
 
         serviceScope.launch {
-            var seenSyncing = false
             syncService.syncStatus.collect { status ->
-                if (status is SyncStatus.Syncing) seenSyncing = true
-                if (seenSyncing && status !is SyncStatus.Syncing) {
-                    stopSelf()
+                Log.d(TAG, "syncStatus changed: $status")
+                when (status) {
+                    is SyncStatus.Success -> {
+                        updateNotification("同步完成")
+                        kotlinx.coroutines.delay(2000)
+                        stopSelf()
+                    }
+                    is SyncStatus.Error -> {
+                        updateNotification("同步失败：${status.message}")
+                        kotlinx.coroutines.delay(4000)
+                        stopSelf()
+                    }
+                    else -> {}
                 }
             }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "onStartCommand")
         return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?) = null
 
     override fun onDestroy() {
+        Log.d(TAG, "onDestroy")
         super.onDestroy()
         serviceScope.cancel()
     }
 
     private fun buildNotification(text: String): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_sync_notification)
             .setOngoing(true)
             .build()
+    }
+
+    private fun updateNotification(text: String) {
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.notify(NOTIFICATION_ID, buildNotification(text))
     }
 
     private fun createNotificationChannel() {
