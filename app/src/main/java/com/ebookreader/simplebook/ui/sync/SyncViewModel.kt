@@ -1,11 +1,13 @@
 package com.ebookreader.simplebook.ui.sync
 
+import android.app.Application
 import android.content.Intent
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ebookreader.simplebook.data.local.dao.SyncLogDao
 import com.ebookreader.simplebook.data.local.entity.SyncLogEntity
 import com.ebookreader.simplebook.data.remote.AuthManager
+import com.ebookreader.simplebook.domain.service.SyncForegroundService
 import com.ebookreader.simplebook.domain.service.SyncService
 import com.ebookreader.simplebook.domain.service.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,10 +21,11 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SyncViewModel @Inject constructor(
+    application: Application,
     private val syncService: SyncService,
     val authManager: AuthManager,
     private val syncLogDao: SyncLogDao
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     val syncStatus: StateFlow<SyncStatus> = syncService.syncStatus
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SyncStatus.Idle)
@@ -56,6 +59,8 @@ class SyncViewModel @Inject constructor(
     fun setSignInError(message: String) { _signInError.value = message }
 
     fun syncNow() {
+        val context = getApplication<Application>()
+        SyncForegroundService.start(context)
         viewModelScope.launch { syncService.syncAll() }
     }
 

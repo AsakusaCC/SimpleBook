@@ -99,9 +99,13 @@ class SyncService @Inject constructor(
                 prefs.edit().putLong("last_synced_at", now).apply()
                 _syncStatus.value = SyncStatus.Success
                 Log.d(TAG, "syncAll: completed successfully")
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.w(TAG, "syncAll: cancelled", e)
+                _syncStatus.value = SyncStatus.Error("同步被中断，请重试")
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "syncAll: failed", e)
-                _syncStatus.value = SyncStatus.Error(e.message ?: "Sync failed")
+                _syncStatus.value = SyncStatus.Error(e.message ?: "同步失败")
             }
         }
     }
