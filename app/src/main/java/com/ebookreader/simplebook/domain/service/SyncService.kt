@@ -110,9 +110,8 @@ class SyncService @Inject constructor(
 
     suspend fun pushToRemote() {
         val appFolderId = driveClient.getAppFolderId()
-        // Push ALL books including soft-deleted ones
-        val books = bookRepository.getAllBooksIncludingDeleted()
-        Log.d(TAG, "pushToRemote: appFolderId=$appFolderId, books=${books.size}")
+        val books = bookRepository.getDirtyBooks()
+        Log.d(TAG, "pushToRemote: appFolderId=$appFolderId, dirtyBooks=${books.size}")
 
         for (book in books) {
             Log.d(TAG, "pushToRemote: pushing book=${book.title}, uuid=${book.uuid}, isDeleted=${book.isDeleted}")
