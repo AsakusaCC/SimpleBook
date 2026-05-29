@@ -42,4 +42,16 @@ interface BookDao {
 
     @Query("SELECT * FROM books WHERE folderId = :folderId AND isDeleted = 0 ORDER BY lastReadAt DESC NULLS LAST, addedAt DESC")
     fun getBooksInFolder(folderId: String): Flow<List<BookEntity>>
+
+    @Query("""
+        SELECT DISTINCT b.* FROM books b
+        WHERE b.lastSyncedAt IS NULL
+           OR b.driveFileId IS NULL
+           OR b.updatedAt > b.lastSyncedAt
+           OR EXISTS (SELECT 1 FROM reading_progress rp WHERE rp.bookUuid = b.uuid AND rp.updatedAt > b.lastSyncedAt)
+           OR EXISTS (SELECT 1 FROM bookmarks bm WHERE bm.bookUuid = b.uuid AND bm.updatedAt > b.lastSyncedAt)
+           OR EXISTS (SELECT 1 FROM highlights hl WHERE hl.bookUuid = b.uuid AND hl.updatedAt > b.lastSyncedAt)
+           OR EXISTS (SELECT 1 FROM notes nt WHERE nt.bookUuid = b.uuid AND nt.updatedAt > b.lastSyncedAt)
+        """)
+    suspend fun getDirtyBooks(): List<BookEntity>
 }
