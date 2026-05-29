@@ -40,6 +40,9 @@ class BookRepositoryImpl @Inject constructor(
     override suspend fun getAllBooksIncludingDeleted(): List<Book> =
         bookDao.getAllBooksIncludingDeleted().map { it.toDomain() }
 
+    override suspend fun getDirtyBooks(): List<Book> =
+        bookDao.getDirtyBooks().map { it.toDomain() }
+
     override fun getShelfBooks(): Flow<List<Book>> =
         bookDao.getShelfBooks().map { entities -> entities.map { it.toDomain() } }
 

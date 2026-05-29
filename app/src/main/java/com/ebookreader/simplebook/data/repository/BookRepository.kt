@@ -12,6 +12,7 @@ interface BookRepository {
     suspend fun updateBook(book: Book)
     suspend fun softDeleteBook(uuid: String)
     suspend fun getAllBooksIncludingDeleted(): List<Book>
+    suspend fun getDirtyBooks(): List<Book>
     fun getShelfBooks(): Flow<List<Book>>
     fun getBooksInFolder(folderId: String): Flow<List<Book>>
     suspend fun moveBookToFolder(bookUuid: String, folderId: String?)
