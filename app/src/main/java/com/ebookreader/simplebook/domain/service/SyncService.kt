@@ -23,6 +23,7 @@ import com.ebookreader.simplebook.data.remote.FolderSyncData
 import com.ebookreader.simplebook.domain.model.Book
 import com.ebookreader.simplebook.domain.model.BookFormat
 import com.ebookreader.simplebook.domain.model.Bookmark
+import com.ebookreader.simplebook.domain.model.FolderInfo
 import com.ebookreader.simplebook.domain.model.Highlight
 import com.ebookreader.simplebook.domain.model.Folder
 import com.ebookreader.simplebook.domain.model.Note
@@ -170,11 +171,13 @@ class SyncService @Inject constructor(
         val appFolderId = driveClient.getAppFolderId()
         val remoteFolders = driveClient.listFilesInFolder(appFolderId)
         Log.d(TAG, "pullFromRemote: appFolderId=$appFolderId, remoteFolders=${remoteFolders.size}")
-        remoteFolders.forEach { (name, id) ->
-            Log.d(TAG, "pullFromRemote: found remote folder: name=$name, id=$id")
+        remoteFolders.forEach { fi ->
+            Log.d(TAG, "pullFromRemote: found remote folder: name=${fi.name}, id=${fi.id}, modifiedTime=${fi.modifiedTime}")
         }
 
-        for ((folderName, folderId) in remoteFolders) {
+        for (fi in remoteFolders) {
+            val folderName = fi.name
+            val folderId = fi.id
             if (!folderName.startsWith("book_")) continue
             Log.d(TAG, "pullFromRemote: processing folder=$folderName, folderId=$folderId")
 
@@ -830,16 +833,16 @@ class SyncService @Inject constructor(
 
         // 1. Find and download the book file from Drive
         val filesInFolder = driveClient.listFilesInFolder(folderId)
-        Log.d(TAG, "downloadBookFromRemote: files in folder: ${filesInFolder.map { it.first }}")
-        val bookFileEntry = filesInFolder.firstOrNull { (name, _) ->
-            !name.startsWith("metadata") && (name.endsWith(".epub") || name.endsWith(".txt"))
+        Log.d(TAG, "downloadBookFromRemote: files in folder: ${filesInFolder.map { it.name }}")
+        val bookFileEntry = filesInFolder.firstOrNull { fi ->
+            !fi.name.startsWith("metadata") && (fi.name.endsWith(".epub") || fi.name.endsWith(".txt"))
         }
         if (bookFileEntry == null) {
             Log.w(TAG, "downloadBookFromRemote: no book file found in folder $folderName")
             return
         }
 
-        val extension = bookFileEntry.first.substringAfterLast('.').lowercase()
+        val extension = bookFileEntry.name.substringAfterLast('.').lowercase()
         val format = when (extension) {
             "epub" -> BookFormat.EPUB
             "txt" -> BookFormat.TXT
@@ -853,7 +856,7 @@ class SyncService @Inject constructor(
         val booksDir = File(context.filesDir, "books").also { it.mkdirs() }
         val localFileName = "${UUID.randomUUID()}.$extension"
         val localFile = File(booksDir, localFileName)
-        driveClient.downloadFileTo(bookFileEntry.second, localFile)
+        driveClient.downloadFileTo(bookFileEntry.id, localFile)
         if (!localFile.exists()) {
             Log.e(TAG, "downloadBookFromRemote: download failed, file not created: ${localFile.absolutePath}")
             return

@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
+import com.ebookreader.simplebook.domain.model.FolderInfo
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -126,15 +127,21 @@ class GoogleDriveClient @Inject constructor(
         result.files.firstOrNull()?.id
     }
 
-    suspend fun listFilesInFolder(folderId: String): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun listFilesInFolder(folderId: String): List<FolderInfo> = withContext(Dispatchers.IO) {
         val drive = drive ?: return@withContext emptyList()
         val query = "'$folderId' in parents and trashed=false"
         val result: FileList = drive.files().list()
             .setSpaces("appDataFolder")
             .setQ(query)
-            .setFields("files(id, name)")
+            .setFields("files(id, name, modifiedTime)")
             .execute()
-        result.files.map { it.name to it.id }
+        result.files.map { file ->
+            FolderInfo(
+                name = file.name,
+                id = file.id,
+                modifiedTime = file.modifiedTime?.toStringRfc3339()
+            )
+        }
     }
 
     suspend fun deleteFile(fileId: String) = withContext(Dispatchers.IO) {
