@@ -28,6 +28,8 @@ class BookmarkRepository @Inject constructor(
 
     suspend fun softDeleteBookmark(uuid: String) { bookmarkDao.softDelete(uuid) }
 
+    suspend fun hardDeleteByBook(bookUuid: String) { bookmarkDao.hardDeleteByBook(bookUuid) }
+
     private fun BookmarkEntity.toDomain() = Bookmark(
         uuid = uuid, bookUuid = bookUuid, chapterIndex = chapterIndex,
         charOffset = charOffset, name = name, createdAt = createdAt, updatedAt = updatedAt, isDeleted = isDeleted

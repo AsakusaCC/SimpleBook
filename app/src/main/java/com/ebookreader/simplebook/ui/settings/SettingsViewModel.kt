@@ -44,6 +44,21 @@ data class UpdateState(
     val error: String? = null
 )
 
+data class CleanDriveState(
+    val phase: CleanDrivePhase = CleanDrivePhase.IDLE,
+    val deletedBookCount: Int = 0,
+    val deletedBookSize: Long = 0,
+    val result: String? = null
+)
+
+enum class CleanDrivePhase {
+    IDLE,           // show button
+    SCANNING,       // scanning Drive...
+    FOUND,          // show count + confirm/cancel
+    CLEANING,       // cleaning...
+    DONE            // show result
+}
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val application: Application,
@@ -66,6 +81,9 @@ class SettingsViewModel @Inject constructor(
 
     private val _updateState = MutableStateFlow(UpdateState())
     val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
+
+    private val _cleanDriveState = MutableStateFlow(CleanDriveState())
+    val cleanDriveState: StateFlow<CleanDriveState> = _cleanDriveState.asStateFlow()
 
     private val currentVersionName: String by lazy {
         runCatching {
@@ -153,5 +171,58 @@ class SettingsViewModel @Inject constructor(
 
     fun signOut() {
         authManager.signOut()
+    }
+
+    fun startCleanScan() {
+        viewModelScope.launch {
+            _cleanDriveState.value = CleanDriveState(phase = CleanDrivePhase.SCANNING)
+            try {
+                val deleted = syncService.scanDeletedRemoteBooks()
+                if (deleted.isEmpty()) {
+                    _cleanDriveState.value = CleanDriveState(phase = CleanDrivePhase.DONE, result = "empty")
+                } else {
+                    _cleanDriveState.value = CleanDriveState(
+                        phase = CleanDrivePhase.FOUND,
+                        deletedBookCount = deleted.size,
+                        deletedBookSize = deleted.sumOf { it.fileSize }
+                    )
+                }
+            } catch (e: Exception) {
+                _cleanDriveState.value = CleanDriveState(phase = CleanDrivePhase.DONE, result = "error|${e.message}")
+            }
+        }
+    }
+
+    fun confirmClean() {
+        viewModelScope.launch {
+            _cleanDriveState.value = _cleanDriveState.value.copy(phase = CleanDrivePhase.CLEANING)
+            try {
+                val result = syncService.cleanDeletedRemoteBooks()
+                val sizeStr = formatFileSize(result.cleanedSize)
+                _cleanDriveState.value = CleanDriveState(
+                    phase = CleanDrivePhase.DONE,
+                    result = "${result.cleanedCount}|$sizeStr"
+                )
+            } catch (e: Exception) {
+                _cleanDriveState.value = CleanDriveState(phase = CleanDrivePhase.DONE, result = "error|${e.message}")
+            }
+        }
+    }
+
+    fun cancelClean() {
+        _cleanDriveState.value = CleanDriveState(phase = CleanDrivePhase.IDLE)
+    }
+
+    fun dismissCleanResult() {
+        _cleanDriveState.value = CleanDriveState(phase = CleanDrivePhase.IDLE)
+    }
+
+    private fun formatFileSize(bytes: Long): String {
+        return when {
+            bytes >= 1_000_000_000 -> "%.1f GB".format(bytes / 1_000_000_000.0)
+            bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1_000_000.0)
+            bytes >= 1_000 -> "%.0f KB".format(bytes / 1_000.0)
+            else -> "$bytes B"
+        }
     }
 }

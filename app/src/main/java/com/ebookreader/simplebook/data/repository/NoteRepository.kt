@@ -28,6 +28,8 @@ class NoteRepository @Inject constructor(
 
     suspend fun softDeleteNote(uuid: String) { noteDao.softDelete(uuid) }
 
+    suspend fun hardDeleteByBook(bookUuid: String) { noteDao.hardDeleteByBook(bookUuid) }
+
     private fun NoteEntity.toDomain() = Note(
         uuid = uuid, bookUuid = bookUuid, highlightUuid = highlightUuid,
         chapterIndex = chapterIndex, charOffset = charOffset, content = content,

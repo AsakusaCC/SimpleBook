@@ -121,6 +121,32 @@ class SyncService @Inject constructor(
             Log.d(TAG, "pushToRemote: pushing book=${book.title}, uuid=${book.uuid}, isDeleted=${book.isDeleted}")
             var currentBook = book
 
+            // ── Deleted book: only update metadata if Drive folder still exists ──
+            if (currentBook.isDeleted) {
+                val existingFolderId = driveClient.findFileInFolder(appFolderId, "book_${currentBook.uuid}")
+                if (existingFolderId != null) {
+                    // Folder still on Drive → push metadata to propagate deletion to other devices
+                    val progress = readingProgressRepository.getProgressIncludingDeleted(currentBook.uuid)
+                    val bookmarks = bookmarkRepository.getAllBookmarksForBookNow(currentBook.uuid)
+                    val highlights = highlightRepository.getAllHighlightsForBookNow(currentBook.uuid)
+                    val notes = noteRepository.getAllNotesForBookNow(currentBook.uuid)
+                    val now = System.currentTimeMillis()
+                    val updatedBook = currentBook.copy(updatedAt = now)
+                    val metadata = buildBookMetadata(updatedBook, progress, bookmarks, highlights, notes)
+                    val metadataJson = gson.toJson(metadata)
+                    driveClient.uploadFile(existingFolderId, "metadata.json", metadataJson.toByteArray(), "application/json")
+                    driveClient.touchFolder(existingFolderId)
+                    bookRepository.updateBook(updatedBook.copy(lastSyncedAt = now))
+                    Log.d(TAG, "pushToRemote: updated metadata for deleted book ${currentBook.uuid}")
+                } else {
+                    // Folder already cleaned from Drive → skip push
+                    val now = System.currentTimeMillis()
+                    bookRepository.updateBook(currentBook.copy(lastSyncedAt = now))
+                    Log.d(TAG, "pushToRemote: skipped deleted book ${currentBook.uuid} (folder already cleaned)")
+                }
+                continue
+            }
+
             val bookFolderName = "book_${currentBook.uuid}"
             val bookFolderId = driveClient.createFolder(bookFolderName, appFolderId)
                 ?: throw Exception("Failed to create book folder for ${currentBook.uuid}")
@@ -732,6 +758,108 @@ class SyncService @Inject constructor(
             Log.d(TAG, "syncFolders: completed, merged ${finalMerged.size} folders")
         } catch (e: Exception) {
             Log.e(TAG, "syncFolders: failed", e)
+        }
+    }
+
+    // ── Clean Deleted Books from Drive ─────────────────────────────
+
+    data class CleanResult(
+        val cleanedCount: Int,
+        val cleanedSize: Long
+    )
+
+    data class DriveDeletedBook(
+        val uuid: String,
+        val folderId: String,
+        val fileSize: Long
+    )
+
+    /**
+     * Scan remote Drive folders for deleted books.
+     * Returns list of books whose metadata has isDeleted=true.
+     * Does NOT depend on local database records.
+     */
+    suspend fun scanDeletedRemoteBooks(): List<DriveDeletedBook> {
+        if (!authManager.isSignedIn) {
+            Log.w(TAG, "scanDeletedRemoteBooks: not signed in")
+            return emptyList()
+        }
+
+        Log.d(TAG, "scanDeletedRemoteBooks: starting scan")
+        val appFolderId = driveClient.getAppFolderId()
+        val remoteFolders = driveClient.listFilesInFolder(appFolderId)
+        Log.d(TAG, "scanDeletedRemoteBooks: found ${remoteFolders.size} remote folders")
+        val result = mutableListOf<DriveDeletedBook>()
+
+        for (fi in remoteFolders) {
+            if (!fi.name.startsWith("book_")) continue
+            val metadataFileId = driveClient.findFileInFolder(fi.id, "metadata.json")
+            if (metadataFileId == null) {
+                Log.d(TAG, "scanDeletedRemoteBooks: no metadata.json in ${fi.name}")
+                continue
+            }
+            val bytes = driveClient.downloadFile(metadataFileId) ?: continue
+            val metadata = try {
+                gson.fromJson(String(bytes), BookMetadata::class.java)
+            } catch (e: Exception) {
+                Log.w(TAG, "scanDeletedRemoteBooks: failed to parse metadata in ${fi.name}", e)
+                continue
+            }
+            Log.d(TAG, "scanDeletedRemoteBooks: ${fi.name} isDeleted=${metadata.isDeleted}, title=${metadata.title}")
+            if (metadata.isDeleted && metadata.bookUuid != null) {
+                result.add(DriveDeletedBook(
+                    uuid = metadata.bookUuid,
+                    folderId = fi.id,
+                    fileSize = metadata.fileSize
+                ))
+            }
+        }
+        Log.d(TAG, "scanDeletedRemoteBooks: found ${result.size} deleted books")
+        return result
+    }
+
+    suspend fun cleanDeletedRemoteBooks(): CleanResult {
+        if (!authManager.isSignedIn) {
+            throw Exception("Not signed in")
+        }
+
+        syncMutex.withLock {
+            try {
+                _syncStatus.value = SyncStatus.Syncing
+
+                // Scan Drive directly for deleted books
+                val deletedOnDrive = scanDeletedRemoteBooks()
+                Log.d(TAG, "cleanDeletedRemoteBooks: found ${deletedOnDrive.size} deleted books on Drive")
+
+                var cleanedCount = 0
+                var cleanedSize = 0L
+
+                for (book in deletedOnDrive) {
+                    Log.d(TAG, "cleanDeletedRemoteBooks: deleting Drive folder book_${book.uuid} (${book.folderId})")
+                    driveClient.deleteFile(book.folderId)
+                    cleanedSize += book.fileSize
+                    cleanedCount++
+
+                    // Also hard-delete local record if it exists
+                    val localBook = bookRepository.getBookByUuid(book.uuid)
+                    if (localBook != null) {
+                        readingProgressRepository.hardDeleteByBook(book.uuid)
+                        bookmarkRepository.hardDeleteByBook(book.uuid)
+                        highlightRepository.hardDeleteByBook(book.uuid)
+                        noteRepository.hardDeleteByBook(book.uuid)
+                        bookRepository.hardDeleteBook(book.uuid)
+                        Log.d(TAG, "cleanDeletedRemoteBooks: hard-deleted local record for ${book.uuid}")
+                    }
+                }
+
+                _syncStatus.value = SyncStatus.Success
+                Log.d(TAG, "cleanDeletedRemoteBooks: completed, cleaned=$cleanedCount, size=$cleanedSize")
+                return CleanResult(cleanedCount, cleanedSize)
+            } catch (e: Exception) {
+                Log.e(TAG, "cleanDeletedRemoteBooks: failed", e)
+                _syncStatus.value = SyncStatus.Error(e.message ?: "清理失败")
+                throw e
+            }
         }
     }
 

@@ -22,8 +22,8 @@ android {
         applicationId = "com.ebookreader.simplebook"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.8.4"
+        versionCode = 5
+        versionName = "0.8.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

@@ -46,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,6 +65,7 @@ import com.ebookreader.simplebook.domain.model.AppStrings
 import com.ebookreader.simplebook.domain.model.ReaderTheme
 import com.ebookreader.simplebook.domain.model.getStrings
 import com.ebookreader.simplebook.domain.service.SyncStatus
+import com.ebookreader.simplebook.ui.settings.CleanDrivePhase
 import com.ebookreader.simplebook.ui.sync.SyncTimeLabel
 import com.ebookreader.simplebook.ui.sync.SyncViewModel
 import com.ebookreader.simplebook.ui.theme.LocalRippleColor
@@ -84,6 +86,7 @@ fun SettingsScreen(
     val accountEmail = account?.email
     val signInError by viewModel.signInError.collectAsState()
     val lastSyncedAt by syncViewModel.lastSyncedAt.collectAsState()
+    val cleanDriveState by viewModel.cleanDriveState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -196,7 +199,165 @@ fun SettingsScreen(
                 }
             }
 
+            // ── Google Drive 同步 ──
+            HorizontalDivider()
+            SectionHeader(strings.syncTitle)
+            Text(
+                strings.syncDescription,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (isSignedIn) {
+                accountEmail?.let { email ->
+                    Text(
+                        strings.syncSignedIn.format(email),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                SyncTimeLabel(
+                    lastSyncedAt = lastSyncedAt,
+                    isSyncing = syncStatus is SyncStatus.Syncing,
+                )
+
+                val isSyncing = syncStatus is SyncStatus.Syncing
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { viewModel.syncNow() },
+                        enabled = !isSyncing
+                    ) {
+                        Text(if (isSyncing) "..." else strings.syncNow)
+                    }
+                    OutlinedButton(onClick = { viewModel.signOut() }) {
+                        Text(strings.syncSignOut)
+                    }
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onSignInClick?.invoke() },
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Text(strings.syncSignIn)
+                }
+                if (signInError != null) {
+                    Text(
+                        text = "登录失败: $signInError",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+
+            // ── 网盘清理 ──
+            HorizontalDivider()
+            SectionHeader(strings.cleanDriveTitle)
+            Text(
+                strings.cleanDriveDescription,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (isSignedIn) {
+                when (cleanDriveState.phase) {
+                    CleanDrivePhase.IDLE -> {
+                        OutlinedButton(
+                            onClick = { viewModel.startCleanScan() },
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text(strings.cleanDriveButton)
+                        }
+                    }
+                    CleanDrivePhase.SCANNING -> {
+                        Text(
+                            strings.cleanDriveScanning,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                    CleanDrivePhase.FOUND -> {
+                        val sizeStr = remember(cleanDriveState.deletedBookSize) {
+                            when {
+                                cleanDriveState.deletedBookSize >= 1_000_000_000 ->
+                                    "%.1f GB".format(cleanDriveState.deletedBookSize / 1_000_000_000.0)
+                                cleanDriveState.deletedBookSize >= 1_000_000 ->
+                                    "%.1f MB".format(cleanDriveState.deletedBookSize / 1_000_000.0)
+                                cleanDriveState.deletedBookSize >= 1_000 ->
+                                    "%.0f KB".format(cleanDriveState.deletedBookSize / 1_000.0)
+                                else -> "${cleanDriveState.deletedBookSize} B"
+                            }
+                        }
+                        Text(
+                            strings.cleanDriveFound(cleanDriveState.deletedBookCount, sizeStr),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Button(onClick = { viewModel.confirmClean() }) {
+                                Text(strings.cleanDriveConfirm)
+                            }
+                            OutlinedButton(onClick = { viewModel.cancelClean() }) {
+                                Text(strings.cancel)
+                            }
+                        }
+                    }
+                    CleanDrivePhase.CLEANING -> {
+                        Text(
+                            strings.cleanDriveCleaning,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                    CleanDrivePhase.DONE -> {
+                        val result = cleanDriveState.result
+                        if (result == "empty") {
+                            Text(
+                                strings.cleanDriveNoDeleted,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        } else if (result != null && result.startsWith("error|")) {
+                            Text(
+                                result.removePrefix("error|"),
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        } else if (result != null) {
+                            val parts = result.split("|")
+                            val count = parts.getOrElse(0) { "0" }.toIntOrNull() ?: 0
+                            val size = parts.getOrElse(1) { "0 B" }
+                            Text(
+                                strings.cleanDriveResult(count, size),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = { viewModel.dismissCleanResult() },
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Text(strings.cleanDriveDone)
+                        }
+                    }
+                }
+            }
+
             // ── 关于 ──
+            HorizontalDivider()
             SectionHeader(strings.about)
             val context = LocalContext.current
             val versionName = remember {
@@ -298,61 +459,6 @@ fun SettingsScreen(
                                 .align(Alignment.TopCenter)
                         )
                     }
-                }
-            }
-
-            // ── Google Drive 同步 ──
-            HorizontalDivider()
-            SectionHeader(strings.syncTitle)
-            Text(
-                strings.syncDescription,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            if (isSignedIn) {
-                accountEmail?.let { email ->
-                    Text(
-                        strings.syncSignedIn.format(email),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                SyncTimeLabel(
-                    lastSyncedAt = lastSyncedAt,
-                    isSyncing = syncStatus is SyncStatus.Syncing,
-                )
-
-                val isSyncing = syncStatus is SyncStatus.Syncing
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { viewModel.syncNow() },
-                        enabled = !isSyncing
-                    ) {
-                        Text(if (isSyncing) "..." else strings.syncNow)
-                    }
-                    OutlinedButton(onClick = { viewModel.signOut() }) {
-                        Text(strings.syncSignOut)
-                    }
-                }
-            } else {
-                OutlinedButton(
-                    onClick = { onSignInClick?.invoke() },
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Text(strings.syncSignIn)
-                }
-                if (signInError != null) {
-                    Text(
-                        text = "登录失败: $signInError",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
                 }
             }
 

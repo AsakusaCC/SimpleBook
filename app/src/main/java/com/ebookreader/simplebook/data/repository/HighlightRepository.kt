@@ -28,6 +28,8 @@ class HighlightRepository @Inject constructor(
 
     suspend fun softDeleteHighlight(uuid: String) { highlightDao.softDelete(uuid) }
 
+    suspend fun hardDeleteByBook(bookUuid: String) { highlightDao.hardDeleteByBook(bookUuid) }
+
     private fun HighlightEntity.toDomain() = Highlight(
         uuid = uuid, bookUuid = bookUuid, chapterIndex = chapterIndex,
         startOffset = startOffset, endOffset = endOffset, color = color.toLong(),

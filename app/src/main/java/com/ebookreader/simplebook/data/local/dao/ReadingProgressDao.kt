@@ -16,4 +16,7 @@ interface ReadingProgressDao {
 
     @Query("SELECT * FROM reading_progress WHERE bookUuid = :bookUuid")
     suspend fun getProgressIncludingDeleted(bookUuid: String): ReadingProgressEntity?
+
+    @Query("DELETE FROM reading_progress WHERE bookUuid = :bookUuid")
+    suspend fun hardDeleteByBook(bookUuid: String)
 }

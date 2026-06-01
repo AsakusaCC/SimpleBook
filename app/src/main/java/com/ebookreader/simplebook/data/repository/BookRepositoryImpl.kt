@@ -43,6 +43,9 @@ class BookRepositoryImpl @Inject constructor(
     override suspend fun getDirtyBooks(): List<Book> =
         bookDao.getDirtyBooks().map { it.toDomain() }
 
+    override suspend fun hardDeleteBook(uuid: String) =
+        bookDao.hardDelete(uuid)
+
     override fun getShelfBooks(): Flow<List<Book>> =
         bookDao.getShelfBooks().map { entities -> entities.map { it.toDomain() } }
 

@@ -51,15 +51,45 @@ class EpubParser @Inject constructor(
     }
 
     private fun extractCoverImage(epubBook: EpubBook): File? {
-        val coverImage = epubBook.coverImage ?: return null
-        val coversDir = File(context.filesDir, "covers").also { it.mkdirs() }
-        val coverFile = File(coversDir, "${System.currentTimeMillis()}.jpg")
-        coverFile.outputStream().use { output ->
-            coverImage.inputStream.use { input ->
-                input.copyTo(output)
+        // 1. Standard: epublib's built-in cover detection
+        epubBook.coverImage?.let { return saveCoverImage(it) }
+
+        // 2. Fallback: find <meta name="cover" content="xxx"/> in OPF metadata,
+        //    then look up the corresponding image resource by ID
+        val coverMetaValue = epubBook.metadata.otherProperties
+            .entries.firstOrNull { it.key.localPart == "cover" }?.value
+        if (coverMetaValue != null) {
+            epubBook.resources.getByIdOrHref(coverMetaValue)?.let { resource ->
+                if (resource.mediaType?.name?.startsWith("image/") == true) {
+                    return saveCoverImage(resource)
+                }
             }
         }
-        return coverFile
+
+        // 3. Fallback: find the largest image resource (cover is usually the biggest)
+        val largestImage = epubBook.resources.all
+            .filter { it.mediaType?.name?.startsWith("image/") == true }
+            .maxByOrNull { it.size }
+        if (largestImage != null) {
+            return saveCoverImage(largestImage)
+        }
+
+        return null
+    }
+
+    private fun saveCoverImage(resource: nl.siegmann.epublib.domain.Resource): File? {
+        return try {
+            val coversDir = File(context.filesDir, "covers").also { it.mkdirs() }
+            val coverFile = File(coversDir, "${System.currentTimeMillis()}.jpg")
+            coverFile.outputStream().use { output ->
+                resource.inputStream.use { input ->
+                    input.copyTo(output)
+                }
+            }
+            coverFile
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun buildTableOfContents(epubBook: EpubBook): TableOfContents {

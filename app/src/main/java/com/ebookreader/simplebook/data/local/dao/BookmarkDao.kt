@@ -26,4 +26,7 @@ interface BookmarkDao {
 
     @Query("SELECT * FROM bookmarks WHERE bookUuid = :bookUuid ORDER BY createdAt DESC")
     suspend fun getAllBookmarksForBookNow(bookUuid: String): List<BookmarkEntity>
+
+    @Query("DELETE FROM bookmarks WHERE bookUuid = :bookUuid")
+    suspend fun hardDeleteByBook(bookUuid: String)
 }

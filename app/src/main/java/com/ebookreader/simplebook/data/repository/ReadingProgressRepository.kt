@@ -20,6 +20,10 @@ class ReadingProgressRepository @Inject constructor(
         readingProgressDao.upsert(progress.toEntity())
     }
 
+    suspend fun hardDeleteByBook(bookUuid: String) {
+        readingProgressDao.hardDeleteByBook(bookUuid)
+    }
+
     private fun ReadingProgressEntity.toDomain() = ReadingProgress(
         uuid = uuid, bookUuid = bookUuid, chapterIndex = chapterIndex,
         charOffset = charOffset, percentage = percentage, updatedAt = updatedAt, isDeleted = isDeleted

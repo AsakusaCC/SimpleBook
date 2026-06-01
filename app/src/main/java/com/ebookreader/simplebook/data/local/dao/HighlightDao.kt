@@ -26,4 +26,7 @@ interface HighlightDao {
 
     @Query("SELECT * FROM highlights WHERE bookUuid = :bookUuid ORDER BY createdAt DESC")
     suspend fun getAllHighlightsForBookNow(bookUuid: String): List<HighlightEntity>
+
+    @Query("DELETE FROM highlights WHERE bookUuid = :bookUuid")
+    suspend fun hardDeleteByBook(bookUuid: String)
 }

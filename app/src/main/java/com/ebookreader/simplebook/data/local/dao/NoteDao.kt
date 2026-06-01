@@ -26,4 +26,7 @@ interface NoteDao {
 
     @Query("SELECT * FROM notes WHERE bookUuid = :bookUuid ORDER BY createdAt DESC")
     suspend fun getAllNotesForBookNow(bookUuid: String): List<NoteEntity>
+
+    @Query("DELETE FROM notes WHERE bookUuid = :bookUuid")
+    suspend fun hardDeleteByBook(bookUuid: String)
 }

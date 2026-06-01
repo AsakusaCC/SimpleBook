@@ -54,4 +54,7 @@ interface BookDao {
            OR EXISTS (SELECT 1 FROM notes nt WHERE nt.bookUuid = b.uuid AND nt.updatedAt > b.lastSyncedAt)
         """)
     suspend fun getDirtyBooks(): List<BookEntity>
+
+    @Query("DELETE FROM books WHERE uuid = :uuid")
+    suspend fun hardDelete(uuid: String)
 }
