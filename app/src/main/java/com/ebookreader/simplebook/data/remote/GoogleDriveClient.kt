@@ -26,7 +26,7 @@ class GoogleDriveClient @Inject constructor(
     private val drive: Drive?
         get() = authManager.signedInAccount.value?.let { account ->
             val credential = GoogleAccountCredential.usingOAuth2(
-                context, listOf(DriveScopes.DRIVE_APPDATA)
+                context, listOf(DriveScopes.DRIVE_APPDATA, DriveScopes.DRIVE_FILE)
             )
             credential.selectedAccount = account.account
             Drive.Builder(
