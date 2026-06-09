@@ -155,4 +155,62 @@ class GoogleDriveClient @Inject constructor(
         val drive = drive ?: return@withContext
         drive.files().delete(fileId).execute()
     }
+
+    // ── User-visible Drive operations ───────────────────────────────
+
+    suspend fun findOrCreateUserFolder(name: String, parentId: String = "root"): String? = withContext(Dispatchers.IO) {
+        val drive = drive ?: return@withContext null
+        val query = "'$parentId' in parents and name='$name' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        val result: FileList = drive.files().list()
+            .setQ(query)
+            .setSpaces("drive")
+            .setFields("files(id)")
+            .execute()
+        val existing = result.files.firstOrNull()?.id
+        if (existing != null) return@withContext existing
+        drive.files().create(
+            com.google.api.services.drive.model.File().apply {
+                this.name = name
+                mimeType = "application/vnd.google-apps.folder"
+                parents = listOf(parentId)
+            }
+        ).setFields("id").execute().id
+    }
+
+    data class DriveFileInfo(
+        val id: String,
+        val name: String,
+        val size: Long,
+        val mimeType: String
+    )
+
+    suspend fun listUserFiles(folderId: String): List<DriveFileInfo> = withContext(Dispatchers.IO) {
+        val drive = drive ?: return@withContext emptyList()
+        val query = "'$folderId' in parents and trashed=false"
+        val result: FileList = drive.files().list()
+            .setQ(query)
+            .setSpaces("drive")
+            .setFields("files(id, name, size, mimeType)")
+            .execute()
+        result.files.map { file ->
+            DriveFileInfo(
+                id = file.id,
+                name = file.name,
+                size = file.size ?: 0L,
+                mimeType = file.mimeType ?: ""
+            )
+        }
+    }
+
+    suspend fun downloadUserFile(fileId: String): ByteArray? = withContext(Dispatchers.IO) {
+        val drive = drive ?: return@withContext null
+        val out = ByteArrayOutputStream()
+        drive.files().get(fileId).executeMediaAndDownloadTo(out)
+        out.toByteArray()
+    }
+
+    suspend fun deleteUserFile(fileId: String) = withContext(Dispatchers.IO) {
+        val drive = drive ?: return@withContext
+        drive.files().delete(fileId).execute()
+    }
 }
