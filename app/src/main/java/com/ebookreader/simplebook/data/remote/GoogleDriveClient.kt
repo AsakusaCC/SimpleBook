@@ -196,7 +196,7 @@ class GoogleDriveClient @Inject constructor(
             DriveFileInfo(
                 id = file.id,
                 name = file.name,
-                size = file.size ?: 0L,
+                size = (file.size ?: 0L).toLong(),
                 mimeType = file.mimeType ?: ""
             )
         }
