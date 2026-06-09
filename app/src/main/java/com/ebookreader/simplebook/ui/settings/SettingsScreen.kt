@@ -64,6 +64,9 @@ import com.ebookreader.simplebook.R
 import com.ebookreader.simplebook.domain.model.AppStrings
 import com.ebookreader.simplebook.domain.model.ReaderTheme
 import com.ebookreader.simplebook.domain.model.getStrings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.ebookreader.simplebook.domain.service.ImportStatus
 import com.ebookreader.simplebook.domain.service.SyncStatus
 import com.ebookreader.simplebook.ui.settings.CleanDrivePhase
 import com.ebookreader.simplebook.ui.sync.SyncTimeLabel
@@ -87,6 +90,20 @@ fun SettingsScreen(
     val signInError by viewModel.signInError.collectAsState()
     val lastSyncedAt by syncViewModel.lastSyncedAt.collectAsState()
     val cleanDriveState by viewModel.cleanDriveState.collectAsState()
+    val importStatus by viewModel.importStatus.collectAsState()
+
+    // Handle reauth for new Google Drive scopes
+    val reauthIntent by viewModel.reauthIntent.collectAsState()
+    val reauthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        viewModel.consumeReauthIntent()
+        // Retry sync after re-auth
+        viewModel.syncNow()
+    }
+    androidx.compose.runtime.LaunchedEffect(reauthIntent) {
+        reauthIntent?.let { reauthLauncher.launch(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -251,6 +268,66 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 4.dp)
                     )
+                }
+            }
+
+            // ── 从 Drive 导入 ──
+            HorizontalDivider()
+            SectionHeader(strings.driveImportTitle)
+            Text(
+                strings.driveImportDescription,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (isSignedIn) {
+                when (val status = importStatus) {
+                    is ImportStatus.Idle -> {
+                        OutlinedButton(
+                            onClick = { viewModel.importFromDrive() },
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text(strings.driveImportButton)
+                        }
+                    }
+                    is ImportStatus.Importing -> {
+                        Text(
+                            strings.driveImporting,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                    is ImportStatus.Success -> {
+                        val msg = if (status.count == 0) strings.driveImportEmpty
+                                  else strings.driveImportResult(status.count)
+                        Text(
+                            msg,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        OutlinedButton(
+                            onClick = { viewModel.importFromDrive() },
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Text(strings.driveImportButton)
+                        }
+                    }
+                    is ImportStatus.Error -> {
+                        Text(
+                            "导入失败: ${status.message}",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        OutlinedButton(
+                            onClick = { viewModel.importFromDrive() },
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Text(strings.driveImportButton)
+                        }
+                    }
                 }
             }
 

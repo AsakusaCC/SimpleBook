@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.ebookreader.simplebook.data.local.dao.SyncLogDao
 import com.ebookreader.simplebook.data.parser.EpubParser
+import com.ebookreader.simplebook.data.parser.TxtParser
 import com.ebookreader.simplebook.data.local.entity.SyncLogEntity
 import com.ebookreader.simplebook.data.remote.AuthManager
 import com.ebookreader.simplebook.data.remote.BookMetadata
@@ -47,6 +48,13 @@ sealed class SyncStatus {
     data object Success : SyncStatus()
 }
 
+sealed class ImportStatus {
+    data object Idle : ImportStatus()
+    data object Importing : ImportStatus()
+    data class Success(val count: Int) : ImportStatus()
+    data class Error(val message: String) : ImportStatus()
+}
+
 @Singleton
 class SyncService @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -60,7 +68,8 @@ class SyncService @Inject constructor(
     private val folderRepository: FolderRepository,
     private val syncLogDao: SyncLogDao,
     private val gson: Gson,
-    private val epubParser: EpubParser
+    private val epubParser: EpubParser,
+    private val txtParser: TxtParser
 ) {
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val syncStatus: StateFlow<SyncStatus> = _syncStatus.asStateFlow()
@@ -69,11 +78,20 @@ class SyncService @Inject constructor(
     private val _lastSyncedAt = MutableStateFlow<Long?>(prefs.getLong("last_synced_at", 0L).takeIf { it > 0 })
     val lastSyncedAt: StateFlow<Long?> = _lastSyncedAt.asStateFlow()
 
+    private val _importStatus = MutableStateFlow<ImportStatus>(ImportStatus.Idle)
+    val importStatus: StateFlow<ImportStatus> = _importStatus.asStateFlow()
+
+    private val _reauthIntent = MutableStateFlow<android.content.Intent?>(null)
+    val reauthIntent: StateFlow<android.content.Intent?> = _reauthIntent.asStateFlow()
+
+    fun consumeReauthIntent() { _reauthIntent.value = null }
+
     private val syncMutex = Mutex()
 
     companion object {
         private const val TAG = "SyncService"
         private const val FOLDERS_FILENAME = "folders.json"
+        private const val PROCESSED_IMPORT_IDS = "processed_import_ids"
     }
 
     // ── Public API ──────────────────────────────────────────────────
@@ -103,6 +121,10 @@ class SyncService @Inject constructor(
                 Log.w(TAG, "syncAll: cancelled", e)
                 _syncStatus.value = SyncStatus.Error("同步被中断，请重试")
                 throw e
+            } catch (e: com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException) {
+                Log.w(TAG, "syncAll: need re-auth for new scope")
+                _reauthIntent.value = e.intent
+                _syncStatus.value = SyncStatus.Error("需要重新授权 Google 权限")
             } catch (e: Exception) {
                 Log.e(TAG, "syncAll: failed", e)
                 _syncStatus.value = SyncStatus.Error(e.message ?: "同步失败")
@@ -1097,5 +1119,125 @@ class SyncService @Inject constructor(
         }
 
         Log.d(TAG, "downloadBookFromRemote: downloaded book ${metadata.title} with uuid ${metadata.bookUuid}")
+    }
+
+    // ── Drive Import ────────────────────────────────────────────────
+
+    suspend fun importFromDriveFolder() {
+        if (!authManager.isSignedIn) {
+            _importStatus.value = ImportStatus.Error("请先登录 Google 账号")
+            return
+        }
+
+        _importStatus.value = ImportStatus.Importing
+
+        try {
+            // 1. Find or create SimpleBook/Import/ folder
+            val simpleBookFolderId = driveClient.findOrCreateUserFolder("SimpleBook")
+                ?: throw Exception("无法创建 SimpleBook 文件夹")
+            val importFolderId = driveClient.findOrCreateUserFolder("Import", simpleBookFolderId)
+                ?: throw Exception("无法创建 Import 文件夹")
+
+            // 2. List files in Import folder
+            val files = driveClient.listUserFiles(importFolderId)
+            Log.d(TAG, "importFromDriveFolder: found ${files.size} files in Import folder")
+
+            // 3. Filter epub/txt files
+            val supportedExtensions = setOf("epub", "txt")
+            val bookFiles = files.filter { file ->
+                val ext = file.name.substringAfterLast('.', "").lowercase()
+                ext in supportedExtensions
+            }
+
+            if (bookFiles.isEmpty()) {
+                _importStatus.value = ImportStatus.Success(0)
+                return
+            }
+
+            // 4. Load processed IDs
+            val processedIds = prefs.getStringSet(PROCESSED_IMPORT_IDS, emptySet())?.toMutableSet()
+                ?: mutableSetOf()
+
+            var importedCount = 0
+            val booksDir = File(context.filesDir, "books").also { it.mkdirs() }
+
+            for (file in bookFiles) {
+                if (file.id in processedIds) {
+                    Log.d(TAG, "importFromDriveFolder: skipping already processed file ${file.name}")
+                    continue
+                }
+
+                try {
+                    val extension = file.name.substringAfterLast('.').lowercase()
+                    val format = when (extension) {
+                        "epub" -> BookFormat.EPUB
+                        "txt" -> BookFormat.TXT
+                        else -> continue
+                    }
+
+                    // Download to local
+                    val localFileName = "${UUID.randomUUID()}.$extension"
+                    val localFile = File(booksDir, localFileName)
+                    val bytes = driveClient.downloadUserFile(file.id)
+                    if (bytes == null) {
+                        Log.w(TAG, "importFromDriveFolder: failed to download ${file.name}")
+                        continue
+                    }
+                    localFile.writeBytes(bytes)
+
+                    // Parse book info
+                    val originalName = file.name.substringBeforeLast('.')
+                    val title: String
+                    val author: String
+                    var coverPath: String? = null
+
+                    when (format) {
+                        BookFormat.EPUB -> {
+                            val result = epubParser.parse(localFile)
+                            title = result.title.ifBlank { originalName }
+                            author = result.author
+                            coverPath = result.coverPath
+                        }
+                        BookFormat.TXT -> {
+                            val result = txtParser.parse(localFile)
+                            title = originalName
+                            author = result.author
+                        }
+                    }
+
+                    // Save to database
+                    val book = Book(
+                        title = title,
+                        author = author,
+                        filePath = localFile.absolutePath,
+                        format = format,
+                        coverPath = coverPath,
+                        fileSize = localFile.length()
+                    )
+                    bookRepository.addBook(book)
+
+                    // Delete source file from Drive
+                    driveClient.deleteUserFile(file.id)
+
+                    // Record processed ID
+                    processedIds.add(file.id)
+                    prefs.edit().putStringSet(PROCESSED_IMPORT_IDS, processedIds).apply()
+
+                    importedCount++
+                    Log.d(TAG, "importFromDriveFolder: imported $title")
+                } catch (e: Exception) {
+                    Log.e(TAG, "importFromDriveFolder: failed to import ${file.name}", e)
+                }
+            }
+
+            _importStatus.value = ImportStatus.Success(importedCount)
+        } catch (e: com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException) {
+            Log.w(TAG, "importFromDriveFolder: need re-auth for new scope")
+            _reauthIntent.value = e.intent
+            _importStatus.value = ImportStatus.Error("需要重新授权 Google 权限")
+        } catch (e: Exception) {
+            Log.e(TAG, "importFromDriveFolder: failed", e)
+            _importStatus.value = ImportStatus.Error(e.message ?: "导入失败")
+        }
     }
 }

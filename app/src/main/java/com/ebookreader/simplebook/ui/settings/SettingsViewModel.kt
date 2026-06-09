@@ -11,6 +11,7 @@ import com.ebookreader.simplebook.data.local.SettingsDataStore
 import com.ebookreader.simplebook.data.remote.AuthManager
 import com.ebookreader.simplebook.domain.model.ReaderSettings
 import com.ebookreader.simplebook.domain.model.ReaderTheme
+import com.ebookreader.simplebook.domain.service.ImportStatus
 import com.ebookreader.simplebook.domain.service.SyncService
 import com.ebookreader.simplebook.domain.service.SyncStatus
 import com.google.gson.Gson
@@ -84,6 +85,14 @@ class SettingsViewModel @Inject constructor(
 
     private val _cleanDriveState = MutableStateFlow(CleanDriveState())
     val cleanDriveState: StateFlow<CleanDriveState> = _cleanDriveState.asStateFlow()
+
+    val importStatus: StateFlow<ImportStatus> = syncService.importStatus
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ImportStatus.Idle)
+
+    val reauthIntent: StateFlow<android.content.Intent?> = syncService.reauthIntent
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun consumeReauthIntent() { syncService.consumeReauthIntent() }
 
     private val currentVersionName: String by lazy {
         runCatching {
@@ -215,6 +224,10 @@ class SettingsViewModel @Inject constructor(
 
     fun dismissCleanResult() {
         _cleanDriveState.value = CleanDriveState(phase = CleanDrivePhase.IDLE)
+    }
+
+    fun importFromDrive() {
+        viewModelScope.launch { syncService.importFromDriveFolder() }
     }
 
     private fun formatFileSize(bytes: Long): String {
