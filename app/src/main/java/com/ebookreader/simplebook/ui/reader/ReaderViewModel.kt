@@ -127,10 +127,14 @@ class ReaderViewModel @Inject constructor(
 
             readingService.loadProgress(bookUuid)?.let { progress ->
                 _currentChapterIndex.value = progress.chapterIndex
-                val totalChapters = _chapters.value.size
-                _scrollPercentage.value = if (totalChapters > 0) {
-                    ((progress.percentage * totalChapters) - progress.chapterIndex).toFloat().coerceIn(0f, 1f)
-                } else 0f
+                _scrollPercentage.value = if (progress.charOffset > 0) {
+                    (progress.charOffset / 10000.0).toFloat().coerceIn(0f, 1f)
+                } else {
+                    val totalChapters = _chapters.value.size
+                    if (totalChapters > 0) {
+                        ((progress.percentage * totalChapters) - progress.chapterIndex).toFloat().coerceIn(0f, 1f)
+                    } else 0f
+                }
             }
 
             // Override with position from Collection navigation
@@ -354,7 +358,7 @@ class ReaderViewModel @Inject constructor(
             readingService.saveProgress(
                 bookUuid = bookUuid,
                 chapterIndex = _currentChapterIndex.value,
-                charOffset = 0,
+                charOffset = (chapterPct * 10000).toLong(),
                 percentage = overallPct
             )
         }

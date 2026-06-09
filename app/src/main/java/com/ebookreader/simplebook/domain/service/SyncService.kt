@@ -81,6 +81,11 @@ class SyncService @Inject constructor(
     private val _importStatus = MutableStateFlow<ImportStatus>(ImportStatus.Idle)
     val importStatus: StateFlow<ImportStatus> = _importStatus.asStateFlow()
 
+    private val _reauthIntent = MutableStateFlow<android.content.Intent?>(null)
+    val reauthIntent: StateFlow<android.content.Intent?> = _reauthIntent.asStateFlow()
+
+    fun consumeReauthIntent() { _reauthIntent.value = null }
+
     private val syncMutex = Mutex()
 
     companion object {
@@ -116,6 +121,10 @@ class SyncService @Inject constructor(
                 Log.w(TAG, "syncAll: cancelled", e)
                 _syncStatus.value = SyncStatus.Error("同步被中断，请重试")
                 throw e
+            } catch (e: com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException) {
+                Log.w(TAG, "syncAll: need re-auth for new scope")
+                _reauthIntent.value = e.intent
+                _syncStatus.value = SyncStatus.Error("需要重新授权 Google 权限")
             } catch (e: Exception) {
                 Log.e(TAG, "syncAll: failed", e)
                 _syncStatus.value = SyncStatus.Error(e.message ?: "同步失败")
@@ -1222,6 +1231,10 @@ class SyncService @Inject constructor(
             }
 
             _importStatus.value = ImportStatus.Success(importedCount)
+        } catch (e: com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException) {
+            Log.w(TAG, "importFromDriveFolder: need re-auth for new scope")
+            _reauthIntent.value = e.intent
+            _importStatus.value = ImportStatus.Error("需要重新授权 Google 权限")
         } catch (e: Exception) {
             Log.e(TAG, "importFromDriveFolder: failed", e)
             _importStatus.value = ImportStatus.Error(e.message ?: "导入失败")

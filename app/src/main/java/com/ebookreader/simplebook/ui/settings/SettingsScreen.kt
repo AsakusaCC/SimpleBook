@@ -64,6 +64,8 @@ import com.ebookreader.simplebook.R
 import com.ebookreader.simplebook.domain.model.AppStrings
 import com.ebookreader.simplebook.domain.model.ReaderTheme
 import com.ebookreader.simplebook.domain.model.getStrings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.ebookreader.simplebook.domain.service.ImportStatus
 import com.ebookreader.simplebook.domain.service.SyncStatus
 import com.ebookreader.simplebook.ui.settings.CleanDrivePhase
@@ -89,6 +91,19 @@ fun SettingsScreen(
     val lastSyncedAt by syncViewModel.lastSyncedAt.collectAsState()
     val cleanDriveState by viewModel.cleanDriveState.collectAsState()
     val importStatus by viewModel.importStatus.collectAsState()
+
+    // Handle reauth for new Google Drive scopes
+    val reauthIntent by viewModel.reauthIntent.collectAsState()
+    val reauthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        viewModel.consumeReauthIntent()
+        // Retry sync after re-auth
+        viewModel.syncNow()
+    }
+    androidx.compose.runtime.LaunchedEffect(reauthIntent) {
+        reauthIntent?.let { reauthLauncher.launch(it) }
+    }
 
     Scaffold(
         topBar = {

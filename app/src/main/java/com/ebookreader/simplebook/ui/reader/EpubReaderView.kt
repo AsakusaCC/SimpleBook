@@ -18,6 +18,7 @@ private const val TAG = "EpubReaderView"
 @Composable
 fun EpubReaderView(
     htmlContent: String,
+    initialScrollPercentage: Float = 0f,
     onScrollPercentageChanged: (Float) -> Unit,
     onChapterFinished: () -> Unit,
     backgroundColor: Long = 0xFFFFFFFF,
@@ -54,10 +55,16 @@ fun EpubReaderView(
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
+                        val initPct = initialScrollPercentage
                         view?.evaluateJavascript(
                             """
                             (function() {
                                 var touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+                                var initPct = $initPct;
+                                if (initPct > 0) {
+                                    var sh = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                                    if (sh > 0) window.scrollTo(0, initPct * sh);
+                                }
                                 document.onscroll = function() {
                                     var scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
                                     var percentage = scrollHeight > 0 ? window.scrollY / scrollHeight : 0;

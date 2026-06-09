@@ -204,6 +204,7 @@ private fun ReaderPane(
             )
         } else {
             val currentChapter = chapters.getOrNull(currentChapterIndex)
+            val savedScrollPct = remember(currentChapterIndex) { scrollPercentage }
             val textStyle = MaterialTheme.typography.bodyLarge.copy(
                 fontSize = settings.fontSize.sp,
                 lineHeight = settings.fontSize.sp * settings.lineHeight,
@@ -214,6 +215,7 @@ private fun ReaderPane(
                 ChapterType.EPUB_HTML -> {
                     EpubReaderView(
                         htmlContent = currentChapter.content,
+                        initialScrollPercentage = savedScrollPct,
                         onScrollPercentageChanged = onScrollPercentageChanged,
                         onChapterFinished = onNextChapter,
                         backgroundColor = settings.backgroundColor,
@@ -233,6 +235,7 @@ private fun ReaderPane(
                 ChapterType.TXT_PLAIN -> {
                     TxtReaderView(
                         paragraphs = currentChapter.content.split("\n"),
+                        initialScrollPercentage = savedScrollPct,
                         textStyle = textStyle,
                         onScrollPositionChanged = onScrollPercentageChanged,
                         onTap = onToggleToolbar,

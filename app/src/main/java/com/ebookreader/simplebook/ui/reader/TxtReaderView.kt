@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun TxtReaderView(
     paragraphs: List<String>,
+    initialScrollPercentage: Float = 0f,
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
     onScrollPositionChanged: (Float) -> Unit,
     onTap: () -> Unit = {},
@@ -136,5 +137,14 @@ fun TxtReaderView(
                 } else 0f
                 onScrollPositionChanged(pct)
             }
+    }
+
+    // Restore scroll position on initial load or chapter change
+    LaunchedEffect(paragraphs) {
+        if (initialScrollPercentage > 0f && paragraphs.isNotEmpty()) {
+            val targetIndex = (initialScrollPercentage * paragraphs.size).toInt()
+                .coerceIn(0, paragraphs.size - 1)
+            listState.scrollToItem(targetIndex)
+        }
     }
 }

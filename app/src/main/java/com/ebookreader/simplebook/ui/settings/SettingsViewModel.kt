@@ -89,6 +89,11 @@ class SettingsViewModel @Inject constructor(
     val importStatus: StateFlow<ImportStatus> = syncService.importStatus
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ImportStatus.Idle)
 
+    val reauthIntent: StateFlow<android.content.Intent?> = syncService.reauthIntent
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun consumeReauthIntent() { syncService.consumeReauthIntent() }
+
     private val currentVersionName: String by lazy {
         runCatching {
             application.packageManager.getPackageInfo(application.packageName, 0).versionName
