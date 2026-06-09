@@ -2,11 +2,11 @@
 
 *Last updated: June 9, 2026*
 
-**Overview**
+## Overview
 
 SimpleBook is an open-source ebook reader for Android. This policy describes how the app handles your data.
 
-**Data We Collect**
+## Data We Collect
 
 SimpleBook collects the minimum data necessary to provide its features:
 
@@ -14,7 +14,7 @@ SimpleBook collects the minimum data necessary to provide its features:
 - **Book files (epub, txt)** — stored locally on your device. When sync is enabled, stored in your Google Drive appData folder (private, only accessible by this app).
 - **Reading data** — reading progress, bookmarks, highlights, and notes. Stored locally and optionally synced to your Google Drive.
 
-**Google Drive Access**
+## Google Drive Access
 
 SimpleBook requests the following Google Drive permissions:
 
@@ -23,33 +23,33 @@ SimpleBook requests the following Google Drive permissions:
 
 Your Google Drive data is only accessed when you explicitly trigger a sync or import action. The app does not access, read, or modify any other files in your Google Drive.
 
-**Data Storage**
+## Data Storage
 
 - All data is stored locally on your device and/or in your own Google Drive.
 - We do not operate any servers. No data is sent to us or any third party.
 - Google Drive data is transmitted directly between your device and Google's servers over encrypted connections.
 
-**Data Sharing**
+## Data Sharing
 
 We do not share, sell, or transmit your data to any third party.
 
-**Data Deletion**
+## Data Deletion
 
 - To delete local data: uninstall the app or delete books within the app.
 - To delete synced data: use the "Drive Cleanup" feature in app settings, or delete the `SimpleBook` folder from your Google Drive manually.
 
-**Children's Privacy**
+## Children's Privacy
 
 SimpleBook is not directed at children under 13. We do not knowingly collect data from children.
 
-**Open Source**
+## Open Source
 
 SimpleBook is open-source software. You can review the full source code at: https://github.com/AsakusaCC/SimpleBook
 
-**Changes**
+## Changes
 
 We may update this policy. The latest version will always be available in the repository above.
 
-**Contact**
+## Contact
 
 For questions about this policy, open an issue at: https://github.com/AsakusaCC/SimpleBook/issues
