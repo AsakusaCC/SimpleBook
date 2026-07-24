@@ -31,25 +31,22 @@ import org.koin.compose.viewmodel.koinViewModel
  * SimpleBookNavHost. The sign-in launcher triggers OAuth via [SyncViewModel.signIn].
  *
  * Desktop has no Activity, so [calculateWindowSizeClass] (Activity-bound) is not available
- * here. Instead we compute a [WindowSizeClass] from a fixed [DpSize] matching the desktop
- * default window (1200 x 800 dp), which resolves to [WindowWidthSizeClass.Expanded] and
- * yields the NavigationRail-based ExpandedLayout — the right choice for a desktop window.
- * Android callers that need true runtime sizing should continue using their own Activity
- * entry point (MainActivity).
+ * here. Instead the caller (desktop [Main.kt]) passes the live window [DpSize] from its
+ * [WindowState], and we derive a [WindowSizeClass] that adapts as the user resizes the
+ * window (defaults to 1200 x 800 dp = Expanded). Android callers that need true runtime
+ * sizing should continue using their own Activity entry point (MainActivity).
  */
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @Composable
-fun App() {
+fun App(windowSize: DpSize = DpSize(1200.dp, 800.dp)) {
     val settingsViewModel: SettingsViewModel = koinViewModel()
     val settings by settingsViewModel.settings.collectAsState()
 
     SimpleBookTheme(readerTheme = settings.theme) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            // Desktop has no Activity — derive a fixed WindowSizeClass matching the default
-            // 1200 x 800 dp desktop window (resolves to Expanded width -> NavigationRail).
-            val windowSizeClass = remember {
-                WindowSizeClass.calculateFromSize(DpSize(1200.dp, 800.dp))
-            }
+            // Desktop has no Activity — derive WindowSizeClass from the live window size
+            // (passed from Main.kt's WindowState), so the layout adapts as the user resizes.
+            val windowSizeClass = WindowSizeClass.calculateFromSize(windowSize)
             val navController = rememberNavController()
             val syncViewModel: SyncViewModel = koinViewModel()
             val strings = remember(settings.language) { getStrings(settings.language) }

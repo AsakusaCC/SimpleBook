@@ -6,9 +6,7 @@ import com.ebookreader.simplebook.data.local.SettingsDataStore
 import com.ebookreader.simplebook.domain.model.ReaderSettings
 import com.ebookreader.simplebook.domain.model.ReaderTheme
 import com.ebookreader.simplebook.domain.service.ImportStatus
-// TODO: Platform-specific — SyncService has Android dependencies
-// import com.ebookreader.simplebook.domain.service.SyncService
-import com.ebookreader.simplebook.domain.service.SyncStatus
+import com.ebookreader.simplebook.domain.service.SyncService
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
@@ -53,34 +51,33 @@ enum class CleanDrivePhase {
     DONE            // show result
 }
 
+/**
+ * 设置页 ViewModel。
+ *
+ * - 阅读设置（字号/行高/主题/语言）：直接读写 [SettingsDataStore]。
+ * - 检查更新：查 GitHub Releases。
+ * - Drive 导入 / 网盘清理：委托给 [SyncService]（KMP 迁移后 SyncService 已在 commonMain，
+ *   Phase 4 期间被 stub 化，现已接回真实能力）。
+ *
+ * 同步状态 / 登录态 / 退出登录 / 重新授权等由 [com.ebookreader.simplebook.ui.sync.SyncViewModel]
+ * 统一管理，本类不再持有（避免双真相）。
+ */
 class SettingsViewModel(
     private val settingsDataStore: SettingsDataStore,
-    // TODO: Platform-specific — SyncService + AuthManager deferred to platform-specific DI
-    // private val syncService: SyncService,
-    // val authManager: AuthManager
+    private val syncService: SyncService
 ) : ViewModel() {
 
     val settings: StateFlow<ReaderSettings> = settingsDataStore.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderSettings())
 
-    // TODO: Platform-specific — sync status requires SyncService
-    val syncStatus: StateFlow<SyncStatus> = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SyncStatus.Idle)
-
-    // TODO: Platform-specific — auth requires AuthManager
-    val isSignedIn: Boolean = false
-    val accountEmail: String? = null
-    val signInError: StateFlow<String?> = MutableStateFlow(null)
+    /** Drive 导入进度，直接透传 [SyncService.importStatus]。 */
+    val importStatus: StateFlow<ImportStatus> = syncService.importStatus
 
     private val _updateState = MutableStateFlow(UpdateState())
     val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
 
     private val _cleanDriveState = MutableStateFlow(CleanDriveState())
     val cleanDriveState: StateFlow<CleanDriveState> = _cleanDriveState.asStateFlow()
-
-    // TODO: Platform-specific — import status requires SyncService
-    val importStatus: StateFlow<ImportStatus> = MutableStateFlow<ImportStatus>(ImportStatus.Idle)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ImportStatus.Idle)
 
     // TODO: Desktop compatibility - version name should be injected via Koin
     private val currentVersionName: String = "0.8"
@@ -150,23 +147,52 @@ class SettingsViewModel(
         viewModelScope.launch { settingsDataStore.updateLanguage(language) }
     }
 
-    // TODO: Platform-specific — sync requires SyncService
-    fun syncNow() {
-        // syncService.syncAll()
+    // ── Drive Import ────────────────────────────────────────────────
+
+    /** 从 Drive 的 SimpleBook/Import/ 文件夹导入 epub/txt。 */
+    fun importFromDrive() {
+        viewModelScope.launch { syncService.importFromDriveFolder() }
     }
 
-    // TODO: Platform-specific — sign out requires AuthManager
-    fun signOut() {
-        // authManager.signOut()
-    }
+    // ── Clean deleted books from Drive ──────────────────────────────
 
-    // TODO: Platform-specific — clean drive requires SyncService
+    /** 扫描 Drive 上标记为已删除的书，进入 FOUND 等待用户确认。 */
     fun startCleanScan() {
-        // Deferred to platform-specific implementation
+        viewModelScope.launch {
+            _cleanDriveState.value = CleanDriveState(phase = CleanDrivePhase.SCANNING)
+            try {
+                val deleted = syncService.scanDeletedRemoteBooks()
+                if (deleted.isEmpty()) {
+                    _cleanDriveState.value = CleanDriveState(phase = CleanDrivePhase.DONE, result = "empty")
+                } else {
+                    _cleanDriveState.value = CleanDriveState(
+                        phase = CleanDrivePhase.FOUND,
+                        deletedBookCount = deleted.size,
+                        deletedBookSize = deleted.sumOf { it.fileSize }
+                    )
+                }
+            } catch (e: Exception) {
+                _cleanDriveState.value =
+                    CleanDriveState(phase = CleanDrivePhase.DONE, result = "error|${e.message}")
+            }
+        }
     }
 
+    /** 用户确认后执行清理（删除 Drive 文件夹 + 硬删本地记录）。 */
     fun confirmClean() {
-        // Deferred to platform-specific implementation
+        viewModelScope.launch {
+            _cleanDriveState.value = _cleanDriveState.value.copy(phase = CleanDrivePhase.CLEANING)
+            try {
+                val result = syncService.cleanDeletedRemoteBooks()
+                _cleanDriveState.value = CleanDriveState(
+                    phase = CleanDrivePhase.DONE,
+                    result = "${result.cleanedCount}|${formatFileSize(result.cleanedSize)}"
+                )
+            } catch (e: Exception) {
+                _cleanDriveState.value =
+                    CleanDriveState(phase = CleanDrivePhase.DONE, result = "error|${e.message}")
+            }
+        }
     }
 
     fun cancelClean() {
@@ -175,11 +201,6 @@ class SettingsViewModel(
 
     fun dismissCleanResult() {
         _cleanDriveState.value = CleanDriveState(phase = CleanDrivePhase.IDLE)
-    }
-
-    // TODO: Platform-specific — import from drive requires SyncService
-    fun importFromDrive() {
-        // Deferred to platform-specific implementation
     }
 
     private fun formatFileSize(bytes: Long): String {

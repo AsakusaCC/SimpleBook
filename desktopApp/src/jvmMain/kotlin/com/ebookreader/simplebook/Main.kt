@@ -50,16 +50,17 @@ fun main() {
             }
         }
 
+        val windowState = rememberWindowState(width = 1200.dp, height = 800.dp)
+
         Window(
             onCloseRequest = { isMinimizedToTray = true },
             title = "SimpleBook",
             visible = !isMinimizedToTray,
-            state = rememberWindowState(
-                width = 1200.dp,
-                height = 800.dp
-            )
+            state = windowState
         ) {
-            App()
+            // windowState.size is State-driven and updates as the user resizes the window,
+            // so App() recomposes and WindowSizeClass adapts (NavigationRail <-> BottomBar).
+            App(windowSize = windowState.size)
         }
     }
 }
