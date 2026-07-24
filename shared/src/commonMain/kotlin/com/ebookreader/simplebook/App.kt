@@ -18,7 +18,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.rememberNavController
 import com.ebookreader.simplebook.domain.model.getStrings
 import com.ebookreader.simplebook.ui.components.AdaptiveScaffold
-import com.ebookreader.simplebook.ui.setupImageLoader
 import com.ebookreader.simplebook.ui.navigation.SimpleBookNavHost
 import com.ebookreader.simplebook.ui.settings.SettingsViewModel
 import com.ebookreader.simplebook.ui.sync.SyncViewModel
@@ -40,9 +39,6 @@ import org.koin.compose.viewmodel.koinViewModel
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @Composable
 fun App(windowSize: DpSize = DpSize(1200.dp, 800.dp)) {
-    // 注册全局 ImageLoader（含 SvgDecoder）。remember 保证每 composition 只调一次；setSafe 自身也幂等。
-    remember { setupImageLoader() }
-
     val settingsViewModel: SettingsViewModel = koinViewModel()
     val settings by settingsViewModel.settings.collectAsState()
 

@@ -13,6 +13,7 @@ import androidx.compose.ui.window.rememberWindowState
 import com.ebookreader.simplebook.di.appModule
 import com.ebookreader.simplebook.di.dataModule
 import com.ebookreader.simplebook.di.platformModule
+import com.ebookreader.simplebook.ui.setupImageLoader
 import org.koin.core.context.startKoin
 import javax.imageio.ImageIO
 
@@ -24,6 +25,8 @@ fun main() {
     startKoin {
         modules(appModule, dataModule, platformModule)
     }
+    // 注册全局 Coil ImageLoader（DataUriMapper + SvgDecoder），进程入口一次性完成。
+    setupImageLoader()
 
     application {
         // Closing the window minimizes to tray instead of quitting; the Tray entry
