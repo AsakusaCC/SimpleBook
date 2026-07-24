@@ -13,7 +13,8 @@ import coil3.svg.SvgDecoder
 fun setupImageLoader() {
     SingletonImageLoader.setSafe { context ->
         ImageLoader.Builder(context).components {
-            add(SvgDecoder.Factory())
+            add(DataUriMapper())       // data: URI → ByteArray（恢复 Coil3 未内置的 data URI 支持）
+            add(SvgDecoder.Factory())  // SVG 矢量解码
         }.build()
     }
 }
