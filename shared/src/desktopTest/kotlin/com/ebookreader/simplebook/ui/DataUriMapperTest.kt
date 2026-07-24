@@ -55,4 +55,15 @@ class DataUriMapperTest {
         assertNotNull(result)
         assertContentEquals(original, result)
     }
+
+    @Test
+    fun returnsNullForDataUriWithoutComma() {
+        assertNull(mapper.map("data:image/jpeg", options))
+    }
+
+    @Test
+    fun returnsNullForMalformedBase64() {
+        // 畸形 base64 不应崩溃，返回 null 让 Coil 优雅降级
+        assertNull(mapper.map("data:image/jpeg;base64,@@@not-valid-base64@@@", options))
+    }
 }

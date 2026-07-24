@@ -22,6 +22,11 @@ class DataUriMapper : Mapper<String, ByteArray> {
         // "data:" 后到 "," 前是 media type（可含 ";base64"）
         val mediaPart = data.substring(5, commaIdx)
         if (!mediaPart.contains("base64", ignoreCase = true)) return null
-        return Base64.decode(data.substring(commaIdx + 1).encodeToByteArray())
+        return try {
+            Base64.decode(data.substring(commaIdx + 1).encodeToByteArray())
+        } catch (_: IllegalArgumentException) {
+            // 畸形 base64：返回 null 让 Coil 链继续、优雅降级，而非崩溃
+            null
+        }
     }
 }
