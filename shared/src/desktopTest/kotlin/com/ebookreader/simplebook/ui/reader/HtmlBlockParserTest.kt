@@ -91,6 +91,28 @@ class HtmlBlockParserTest {
     }
 
     @Test
+    fun parsesSvgWrappedImageXlinkHref() {
+        // 真实样本写法：图片型 EPUB 每页一张 jpg，用 svg 包裹做尺寸适配
+        val html = """
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+                 width="100%" height="100%" viewBox="0 0 867 1300">
+                <image width="867" height="1300" xlink:href="../Images/200273.jpg"/>
+            </svg>
+        """.trimIndent()
+        val blocks = HtmlBlockParser.parse(html)
+        val img = blocks.filterIsInstance<HtmlBlock.Image>().single()
+        assertEquals("../Images/200273.jpg", img.src)
+    }
+
+    @Test
+    fun parsesSvgImageBareHref() {
+        // SVG2 写法（裸 href，无 xlink: 前缀）
+        val blocks = HtmlBlockParser.parse("<svg><image href=\"cover.png\"/></svg>")
+        val img = blocks.filterIsInstance<HtmlBlock.Image>().single()
+        assertEquals("cover.png", img.src)
+    }
+
+    @Test
     fun parsesUnorderedList() {
         val blocks = HtmlBlockParser.parse("<ul><li>a</li><li>b</li></ul>")
         val items = blocks.filterIsInstance<HtmlBlock.ListItem>()

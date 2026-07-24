@@ -62,6 +62,13 @@ object HtmlBlockParser {
                         alt = node.attr("alt").takeIf { it.isNotBlank() }
                     )
                 )
+                "image" -> out.add(
+                    HtmlBlock.Image(
+                        // SVG <image> 用 xlink:href（SVG1）或 href（SVG2）；jsoup 保留命名空间前缀属性名
+                        src = node.attr("xlink:href").takeIf { it.isNotBlank() } ?: node.attr("href"),
+                        alt = node.attr("alt").takeIf { it.isNotBlank() }
+                    )
+                )
                 "blockquote" -> out.add(HtmlBlock.Quote(parseInline(node)))
                 "hr" -> out.add(HtmlBlock.Rule)
                 "pre" -> {
