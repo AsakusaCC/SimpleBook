@@ -27,3 +27,7 @@ captures/
 
 # Google Services (if needed later)
 google-services.json
+build/
+
+# Google OAuth client secrets (Desktop OAuth) — contains real client_secret, NEVER commit
+client_secret*.json

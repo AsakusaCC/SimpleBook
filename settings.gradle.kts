@@ -3,6 +3,7 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
+        maven { url = uri("https://maven.pkg.jetbrains.space/public/p/compose/dev") }
     }
 }
 
@@ -12,8 +13,11 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://github.com/psiegman/mvn-repo/raw/master/releases") }
+        maven { url = uri("https://maven.pkg.jetbrains.space/public/p/compose/dev") }
     }
 }
 
 rootProject.name = "SimpleBook"
-include(":app")
+include(":shared")
+include(":androidApp")
+include(":desktopApp")
