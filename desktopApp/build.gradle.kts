@@ -18,7 +18,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg)
             packageName = "SimpleBook"
-            packageVersion = "0.8.7"
+            packageVersion = "1.0.0"
             description = "A cross-platform ebook reader"
             vendor = "SimpleBook"
             macOS {
