@@ -64,6 +64,9 @@ import com.ebookreader.simplebook.ui.components.SpeedDialItem
 import com.ebookreader.simplebook.ui.sync.SyncStatusIcon
 import com.ebookreader.simplebook.ui.sync.SyncTimeLabel
 import com.ebookreader.simplebook.ui.sync.SyncViewModel
+import org.jetbrains.compose.resources.painterResource
+import simplebook.shared.generated.resources.Res
+import simplebook.shared.generated.resources.shelf_mascot
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -237,6 +240,7 @@ fun BookListScreen(
                 }
                 if (showEmpty) {
                     ShelfEmptyState(
+                        mascotResource = painterResource(Res.drawable.shelf_mascot),
                         emptyText = strings.emptyShelfTitle,
                         secondaryText = strings.emptyShelfHint,
                         modifier = Modifier.align(Alignment.Center)

@@ -52,6 +52,9 @@ import com.ebookreader.simplebook.domain.model.Bookmark
 import com.ebookreader.simplebook.domain.model.Note
 import com.ebookreader.simplebook.ui.components.ShelfEmptyState
 import com.ebookreader.simplebook.ui.navigation.Screen
+import org.jetbrains.compose.resources.painterResource
+import simplebook.shared.generated.resources.Res
+import simplebook.shared.generated.resources.shelf_mascot
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -233,6 +236,7 @@ fun BookmarkGroupedList(
             contentAlignment = Alignment.Center
         ) {
             ShelfEmptyState(
+                mascotResource = painterResource(Res.drawable.shelf_mascot),
                 emptyText = "还没有书签",
                 secondaryText = null
             )
@@ -287,6 +291,7 @@ fun NoteGroupedList(
             contentAlignment = Alignment.Center
         ) {
             ShelfEmptyState(
+                mascotResource = painterResource(Res.drawable.shelf_mascot),
                 emptyText = "还没有笔记",
                 secondaryText = null
             )
