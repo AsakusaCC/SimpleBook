@@ -72,6 +72,9 @@ kotlin {
             // Coil (CMP)
             implementation("io.coil-kt.coil3:coil-compose:3.0.4")
 
+            // Coil SVG decoder — 解码 SVG（Android: androidsvg；Desktop JVM: Skiko）
+            implementation("io.coil-kt.coil3:coil-svg:3.0.4")
+
             // Koin compose viewmodel — koinViewModel() used directly by androidApp MainActivity
             api("io.insert-koin:koin-compose-viewmodel:4.0.4")
         }
