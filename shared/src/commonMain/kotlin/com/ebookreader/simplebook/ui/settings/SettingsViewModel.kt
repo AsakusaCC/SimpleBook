@@ -2,6 +2,7 @@ package com.ebookreader.simplebook.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ebookreader.simplebook.AppVersion
 import com.ebookreader.simplebook.data.local.SettingsDataStore
 import com.ebookreader.simplebook.domain.model.ReaderSettings
 import com.ebookreader.simplebook.domain.model.ReaderTheme
@@ -79,8 +80,8 @@ class SettingsViewModel(
     private val _cleanDriveState = MutableStateFlow(CleanDriveState())
     val cleanDriveState: StateFlow<CleanDriveState> = _cleanDriveState.asStateFlow()
 
-    // TODO: Desktop compatibility - version name should be injected via Koin
-    private val currentVersionName: String = "0.8"
+    // 单一来源（gradle.properties → 生成的 AppVersion.NAME），与显示页一致
+    private val currentVersionName: String = AppVersion.NAME
 
     fun checkForUpdate() {
         viewModelScope.launch(Dispatchers.IO) {

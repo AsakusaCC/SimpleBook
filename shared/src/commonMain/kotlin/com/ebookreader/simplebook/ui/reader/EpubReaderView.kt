@@ -122,14 +122,19 @@ fun EpubReaderView(
             }
     }
 
-    // 章末：滚到底 + 还有下一章 → 弹「下一章」确认
+    // 章末：内容曾可滚动（图片已加载且超过视口）→ 用户滚到底，才弹「下一章」确认。
+    // 不能只看 canScrollForward==false：纯图片页首帧图片尚未异步解码、内容高度≈0，
+    // canScrollForward 一开始就是 false，snapshotFlow 首帧即发射，会立即误触发弹窗。
+    // 这里要求经历 true→false 的转换，确保是“用户真的滚到了底”。
     LaunchedEffect(listState, blocks) {
+        var wasScrollable = false
         snapshotFlow { listState.canScrollForward }
             .collect { canScroll ->
-                if (!canScroll && hasNextChapter && !hasNotifiedEnd) {
+                if (!canScroll && wasScrollable && hasNextChapter && !hasNotifiedEnd) {
                     hasNotifiedEnd = true
                     showEndDialog = true
                 }
+                wasScrollable = canScroll
             }
     }
 

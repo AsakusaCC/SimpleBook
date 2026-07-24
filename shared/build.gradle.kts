@@ -132,6 +132,10 @@ kotlin {
             }
         }
     }
+
+    // AppVersion.kt 由 generateAppVersion 任务生成（gradle.properties 的 simplebook.versionName）。
+    // 用 getByName 绕开 sourceSets DSL 里 commonMain.kotlin 解析不到的问题。
+    sourceSets.getByName("commonMain").kotlin.srcDir("build/generated/version/kotlin")
 }
 
 // Generate the Google OAuth client secret into a gitignored source file from local.properties.
@@ -165,6 +169,43 @@ tasks.matching {
     val n = it.name
     (n.startsWith("compile") || n.startsWith("ksp")) && n.contains("Desktop")
 }.configureEach { dependsOn(generateOAuthSecret) }
+
+// Generate AppVersion.kt (single source of truth for the displayed version) from
+// gradle.properties (simplebook.versionName) into commonMain. Both the Android versionName
+// and the in-app "关于" display read this, so a version bump updates everywhere automatically.
+// Desktop's packageVersion stays 1.0.0 (macOS dmg requires MAJOR>0), hence runtime package
+// metadata can't be the version source — it must be a compiled-in constant.
+val generateAppVersion by tasks.registering {
+    val propsFile = rootProject.file("gradle.properties")
+    val outFile = file("build/generated/version/kotlin/com/ebookreader/simplebook/AppVersion.kt")
+    inputs.file(propsFile)
+    outputs.file(outFile)
+    doLast {
+        val props = Properties()
+        propsFile.inputStream().use { props.load(it) }
+        val version = props.getProperty("simplebook.versionName")
+            ?: error("simplebook.versionName not set in gradle.properties — required for app version display")
+        outFile.parentFile.mkdirs()
+        outFile.writeText(
+            """
+            |package com.ebookreader.simplebook
+            |
+            |/**
+            | * 应用版本号。由 generateAppVersion 任务从 gradle.properties (simplebook.versionName)
+            | * 生成，勿手改——升版本改 gradle.properties 即可，Android versionName 与显示页同步。
+            | */
+            |object AppVersion {
+            |    const val NAME = "${version.replace("\\", "\\\\").replace("\"", "\\\"")}"
+            |}
+            """.trimMargin() + "\n"
+        )
+    }
+}
+
+tasks.matching {
+    val n = it.name
+    n.startsWith("compile") || n.startsWith("ksp")
+}.configureEach { dependsOn(generateAppVersion) }
 
 android {
     namespace = "com.ebookreader.simplebook.shared"

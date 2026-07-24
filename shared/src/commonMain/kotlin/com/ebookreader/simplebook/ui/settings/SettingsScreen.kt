@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
+import com.ebookreader.simplebook.AppVersion
 import com.ebookreader.simplebook.domain.model.AppStrings
 import com.ebookreader.simplebook.domain.model.ReaderTheme
 import com.ebookreader.simplebook.domain.model.getStrings
@@ -442,8 +443,7 @@ fun SettingsScreen(
             // ── 关于 ──
             HorizontalDivider()
             SectionHeader(strings.about)
-            // TODO: Platform-specific — LocalContext / packageManager is Android-only
-            val versionName = remember { "0.8" }
+            val versionName = AppVersion.NAME
             // Update state handling
             val updateState by viewModel.updateState.collectAsState()
 

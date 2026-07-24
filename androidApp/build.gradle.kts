@@ -21,8 +21,9 @@ android {
         applicationId = "com.ebookreader.simplebook"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "0.8.7"
+        versionCode = 8
+        // 单一来源：与显示页（shared 生成的 AppVersion.NAME）同源，避免再次脱节
+        versionName = rootProject.property("simplebook.versionName") as String
     }
 
     signingConfigs {

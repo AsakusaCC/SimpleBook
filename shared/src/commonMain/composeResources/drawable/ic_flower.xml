@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 5 petals (V-notch at tip), group rotations pre-baked into pathData for CMP cross-platform render -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,9.5 C8.5,9,6,6,8,3.5 C9.5,2.5,11,4.5,12,5.5 C13,4.5,14.5,2.5,16,3.5 C18,6,15.5,9,12,9.5 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M14.378,11.227 C13.772,7.744,15.852,4.44,18.848,5.569 C20.262,6.687,18.824,8.731,18.182,9.991 C19.442,10.633,21.808,11.442,21.32,13.178 C19.56,15.852,15.935,14.402,14.378,11.227 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M13.469,14.023 C16.595,12.37,20.381,13.327,20.232,16.526 C19.607,18.216,17.217,17.48,15.821,17.259 C15.599,18.655,15.561,21.155,13.76,21.228 C10.673,20.381,10.932,16.484,13.469,14.023 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M10.531,14.023 C13.068,16.484,13.327,20.381,10.24,21.228 C8.439,21.155,8.401,18.655,8.179,17.259 C6.783,17.48,4.393,18.216,3.768,16.526 C3.619,13.327,7.405,12.37,10.531,14.023 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M9.622,11.227 C8.065,14.402,4.44,15.852,2.68,13.178 C2.192,11.442,4.558,10.633,5.818,9.991 C5.176,8.731,3.738,6.687,5.152,5.569 C8.148,4.44,10.228,7.744,9.622,11.227 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,12 m-2,0 a2,2 0,1,1 4,0 a2,2 0,1,1 -4,0" />
+</vector>

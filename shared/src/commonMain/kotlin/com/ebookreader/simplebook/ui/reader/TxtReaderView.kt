@@ -98,13 +98,17 @@ fun TxtReaderView(
         }
     }
 
+    // 章末：内容曾可滚动 → 用户滚到底，才弹「下一章」确认。同 EpubReaderView：
+    // 纯只看 canScrollForward==false 会在短章节/内容未加载时首帧即误触发。
     LaunchedEffect(listState) {
+        var wasScrollable = false
         snapshotFlow { listState.canScrollForward }
             .collect { canScroll ->
-                if (!canScroll && hasNextChapter && !hasNotifiedEnd) {
+                if (!canScroll && wasScrollable && hasNextChapter && !hasNotifiedEnd) {
                     hasNotifiedEnd = true
                     showEndDialog = true
                 }
+                wasScrollable = canScroll
             }
     }
 

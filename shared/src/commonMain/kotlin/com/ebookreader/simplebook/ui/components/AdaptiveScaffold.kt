@@ -13,13 +13,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.LocalFlorist
 import androidx.compose.material.icons.filled.ModeNight
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Water
 import androidx.compose.material.icons.filled.Yard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,7 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -48,16 +46,24 @@ import com.ebookreader.simplebook.domain.model.AppStrings
 import com.ebookreader.simplebook.domain.model.CollectionIcon
 import com.ebookreader.simplebook.ui.navigation.Screen
 import com.ebookreader.simplebook.ui.theme.LocalReaderTheme
+import org.jetbrains.compose.resources.painterResource
+import simplebook.shared.generated.resources.Res
+import simplebook.shared.generated.resources.ic_diamond
+import simplebook.shared.generated.resources.ic_flower
+import simplebook.shared.generated.resources.ic_wave
 
-private fun collectionIconFor(icon: CollectionIcon): ImageVector = when (icon) {
-    CollectionIcon.HEART -> Icons.Default.Favorite
-    CollectionIcon.BOOKMARK -> Icons.Default.Bookmark
-    CollectionIcon.FLOWER -> Icons.Default.LocalFlorist
-    CollectionIcon.LEAF -> Icons.Default.Eco
-    CollectionIcon.DIAMOND -> Icons.Default.Diamond
-    CollectionIcon.MOON -> Icons.Default.ModeNight
-    CollectionIcon.SPROUT -> Icons.Default.Yard
-    CollectionIcon.WAVE -> Icons.Default.Water
+// 自定义主题图标（樱花/钻石/海浪）从 shared composeResources 加载，恢复 KMP 迁移前的原始矢量图。
+// 其余主题仍用 Material 图标，统一包成 Painter。
+@Composable
+private fun collectionIconPainter(icon: CollectionIcon): Painter = when (icon) {
+    CollectionIcon.HEART -> rememberVectorPainter(Icons.Default.Favorite)
+    CollectionIcon.BOOKMARK -> rememberVectorPainter(Icons.Default.Bookmark)
+    CollectionIcon.FLOWER -> painterResource(Res.drawable.ic_flower)
+    CollectionIcon.LEAF -> rememberVectorPainter(Icons.Default.Eco)
+    CollectionIcon.DIAMOND -> painterResource(Res.drawable.ic_diamond)
+    CollectionIcon.MOON -> rememberVectorPainter(Icons.Default.ModeNight)
+    CollectionIcon.SPROUT -> rememberVectorPainter(Icons.Default.Yard)
+    CollectionIcon.WAVE -> painterResource(Res.drawable.ic_wave)
 }
 
 @Composable
@@ -71,11 +77,11 @@ fun AdaptiveScaffold(
     val currentRoute = navBackStackEntry?.destination?.route
     val showNav = currentRoute != Screen.Reader.route
 
-    val collectionIcon = collectionIconFor(LocalReaderTheme.current.collectionIcon)
+    val collectionIcon = collectionIconPainter(LocalReaderTheme.current.collectionIcon)
     val navItems = listOf(
-        NavItem(Screen.BookList.route, Icons.Default.Book, strings.navBooks),
+        NavItem(Screen.BookList.route, rememberVectorPainter(Icons.Default.Book), strings.navBooks),
         NavItem(Screen.Collection.route, collectionIcon, strings.navFavorites),
-        NavItem(Screen.Settings.route, Icons.Default.Settings, strings.navSettings),
+        NavItem(Screen.Settings.route, rememberVectorPainter(Icons.Default.Settings), strings.navSettings),
     )
 
     when (windowSizeClass.widthSizeClass) {
@@ -90,7 +96,7 @@ fun AdaptiveScaffold(
 
 private data class NavItem(
     val route: String,
-    val icon: ImageVector,
+    val icon: Painter,
     val label: String
 )
 
