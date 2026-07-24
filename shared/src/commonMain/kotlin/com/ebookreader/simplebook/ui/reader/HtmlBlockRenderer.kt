@@ -113,27 +113,13 @@ fun HtmlBlockRenderer(
 
 @Composable
 private fun BlockImage(block: HtmlBlock.Image, modifier: Modifier) {
-    if (isSvgDataUri(block.src)) {
-        // SVG 在桌面无原生解码器（Coil 默认不含 coil-svg 扩展）：显示 alt，否则留空
-        if (!block.alt.isNullOrBlank()) {
-            Text(
-                text = block.alt,
-                style = TextStyle(color = Color.Gray),
-                modifier = modifier.padding(8.dp)
-            )
-        }
-    } else {
-        // Coil3 原生支持 data: URI model，跨平台解码（png/jpeg/gif/webp）
-        AsyncImage(
-            model = block.src,
-            contentDescription = block.alt,
-            modifier = modifier.fillMaxWidth().padding(vertical = 8.dp)
-        )
-    }
+    // 统一走 AsyncImage：位图走 Coil 默认解码器；SVG data URI 走 SvgDecoder（见 ImageLoaderSetup）。
+    AsyncImage(
+        model = block.src,
+        contentDescription = block.alt,
+        modifier = modifier.fillMaxWidth().padding(vertical = 8.dp)
+    )
 }
-
-private fun isSvgDataUri(src: String): Boolean =
-    src.startsWith("data:image/svg", ignoreCase = true)
 
 private fun InlineContent.toAnnotatedString(linkColor: Color) = buildAnnotatedString {
     for (span in spans) {
