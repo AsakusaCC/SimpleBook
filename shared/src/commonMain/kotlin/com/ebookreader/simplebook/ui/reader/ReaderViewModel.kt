@@ -221,7 +221,7 @@ class ReaderViewModel(
         }
 
         // Resolve <image xlink:href="..."> in SVG
-        val svgImageRegex = Regex("""(<image\s[^>]*?xlink:href\s*=\s*["'])([^"']+)(["'])""", RegexOption.IGNORE_CASE)
+        val svgImageRegex = Regex("""(<image\s[^>]*?(?:xlink:)?href\s*=\s*["'])([^"']+)(["'])""", RegexOption.IGNORE_CASE)
         result = svgImageRegex.replace(result) { match ->
             val dataUri = resolveToDataUri(match.groupValues[2], basePath, epubBook)
             if (dataUri != null) "${match.groupValues[1]}$dataUri${match.groupValues[3]}" else match.value
