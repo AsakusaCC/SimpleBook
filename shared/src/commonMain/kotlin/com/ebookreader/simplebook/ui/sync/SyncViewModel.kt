@@ -9,6 +9,7 @@ import com.ebookreader.simplebook.domain.service.SyncStatus
 import com.ebookreader.simplebook.platform.AuthProvider
 import com.ebookreader.simplebook.platform.ForegroundSyncController
 import com.ebookreader.simplebook.platform.ReauthRequest
+import com.ebookreader.simplebook.platform.SyncPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +21,8 @@ class SyncViewModel(
     private val syncService: SyncService,
     val authProvider: AuthProvider,
     private val syncLogDao: SyncLogDao,
-    private val foregroundSyncController: ForegroundSyncController
+    private val foregroundSyncController: ForegroundSyncController,
+    private val prefs: SyncPreferences
 ) : ViewModel() {
 
     val syncStatus: StateFlow<SyncStatus> = syncService.syncStatus
@@ -48,6 +50,24 @@ class SyncViewModel(
 
     private val _accountEmail = MutableStateFlow(authProvider.userEmail)
     val accountEmail: StateFlow<String?> = _accountEmail.asStateFlow()
+
+    // 自动同步开关：默认开启（true），与升级前行为一致；关闭后 ON_START 不再自动同步。
+    private val _autoSyncEnabled = MutableStateFlow(prefs.getBoolean(KEY_AUTO_SYNC, true))
+    val autoSyncEnabled: StateFlow<Boolean> = _autoSyncEnabled.asStateFlow()
+
+    fun toggleAutoSync() {
+        val next = !_autoSyncEnabled.value
+        prefs.putBoolean(KEY_AUTO_SYNC, next)
+        _autoSyncEnabled.value = next
+    }
+
+    /**
+     * 进入前台（ON_START）时调用：仅当已登录且开启自动同步时才触发同步。
+     * 封装了原先散落在 App.kt / MainActivity.kt 的 isSignedIn 判断。
+     */
+    fun autoSyncIfEnabled() {
+        if (isSignedIn.value && autoSyncEnabled.value) syncNow()
+    }
 
     fun refreshAuthState() {
         _isSignedIn.value = authProvider.isSignedIn
@@ -83,5 +103,9 @@ class SyncViewModel(
     fun signOut() {
         authProvider.signOut()
         refreshAuthState()
+    }
+
+    companion object {
+        private const val KEY_AUTO_SYNC = "auto_sync"
     }
 }
