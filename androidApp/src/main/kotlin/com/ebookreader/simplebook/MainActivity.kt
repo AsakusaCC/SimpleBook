@@ -166,9 +166,7 @@ class MainActivity : ComponentActivity() {
                         DisposableEffect(lifecycleOwner) {
                             val observer = LifecycleEventObserver { _, event ->
                                 if (event == Lifecycle.Event.ON_START) {
-                                    if (syncViewModel.isSignedIn.value) {
-                                        syncViewModel.syncNow()
-                                    }
+                                    syncViewModel.autoSyncIfEnabled()
                                 }
                             }
                             lifecycleOwner.lifecycle.addObserver(observer)

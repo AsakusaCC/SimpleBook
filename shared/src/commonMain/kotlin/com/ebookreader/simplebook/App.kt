@@ -55,9 +55,7 @@ fun App(windowSize: DpSize = DpSize(1200.dp, 800.dp)) {
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_START) {
-                        if (syncViewModel.isSignedIn.value) {
-                            syncViewModel.syncNow()
-                        }
+                        syncViewModel.autoSyncIfEnabled()
                     }
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)
