@@ -9,6 +9,7 @@ import com.ebookreader.simplebook.data.remote.AuthManager
 import com.ebookreader.simplebook.data.remote.GoogleDriveClient
 import com.ebookreader.simplebook.platform.AuthProvider
 import com.ebookreader.simplebook.platform.ForegroundSyncController
+import com.ebookreader.simplebook.platform.SyncPreferences
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.singleOf
@@ -39,6 +40,7 @@ actual val platformModule: Module = module {
 
     // Android-specific: Settings (DataStore) — uses Koin to get Context internally
     singleOf(::SettingsDataStore)
+    singleOf(::SyncPreferences)
 
     // Override database with migrations (Android-only)
     single<SimpleBookDatabase> {
