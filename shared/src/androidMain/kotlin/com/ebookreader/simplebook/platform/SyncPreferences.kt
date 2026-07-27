@@ -14,4 +14,7 @@ actual class SyncPreferences actual constructor() {
     actual fun getStringSet(key: String, default: Set<String>?): Set<String>? = prefs.getStringSet(key, default)
     actual fun putStringSet(key: String, value: Set<String>) =
         prefs.edit().putStringSet(key, value).apply()
+    actual fun getBoolean(key: String, default: Boolean): Boolean = prefs.getBoolean(key, default)
+    actual fun putBoolean(key: String, value: Boolean) =
+        prefs.edit().putBoolean(key, value).apply()
 }
