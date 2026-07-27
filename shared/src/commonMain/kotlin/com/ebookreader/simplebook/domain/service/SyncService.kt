@@ -55,12 +55,12 @@ class SyncService(
     private val syncLogDao: SyncLogDao,
     private val gson: Gson,
     private val epubParser: EpubParser,
-    private val txtParser: TxtParser
+    private val txtParser: TxtParser,
+    private val prefs: SyncPreferences
 ) {
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val syncStatus: StateFlow<SyncStatus> = _syncStatus.asStateFlow()
 
-    private val prefs = SyncPreferences()
     private val _lastSyncedAt = MutableStateFlow<Long?>(prefs.getLong("last_synced_at", 0L).takeIf { it > 0 })
     val lastSyncedAt: StateFlow<Long?> = _lastSyncedAt.asStateFlow()
 
