@@ -290,10 +290,10 @@ fun SettingsScreen(
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
             ) {
                 Text(strings.autoSyncLabel, style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.width(12.dp))
                 Switch(
                     checked = autoSyncEnabled,
                     onCheckedChange = { syncViewModel.toggleAutoSync() }
