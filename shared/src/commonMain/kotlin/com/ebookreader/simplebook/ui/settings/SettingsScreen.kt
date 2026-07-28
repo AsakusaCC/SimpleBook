@@ -280,26 +280,24 @@ fun SettingsScreen(
                 }
             }
 
-            // ── 同步设置 ──
-            if (isSignedIn) {
-                HorizontalDivider()
-                SectionHeader(strings.syncSettingsTitle)
-                Text(
-                    strings.syncSettingsDescription,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            // ── 同步设置（始终显示：未登录时切换无害，登录后再生效） ──
+            HorizontalDivider()
+            SectionHeader(strings.syncSettingsTitle)
+            Text(
+                strings.syncSettingsDescription,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+            ) {
+                Text(strings.autoSyncLabel, style = MaterialTheme.typography.bodyLarge)
+                Switch(
+                    checked = autoSyncEnabled,
+                    onCheckedChange = { syncViewModel.toggleAutoSync() }
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                ) {
-                    Text(strings.autoSyncLabel, style = MaterialTheme.typography.bodyLarge)
-                    Switch(
-                        checked = autoSyncEnabled,
-                        onCheckedChange = { syncViewModel.toggleAutoSync() }
-                    )
-                }
             }
 
             // ── 从 Drive 导入 ──
