@@ -98,7 +98,7 @@ class MainActivity : ComponentActivity() {
                             )
                             Spacer(Modifier.height(16.dp))
                             Text(
-                                "Simple Book v0.8.6",
+                                "Simple Book v${AppVersion.NAME}",
                                 color = Color(0xFF999999),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
