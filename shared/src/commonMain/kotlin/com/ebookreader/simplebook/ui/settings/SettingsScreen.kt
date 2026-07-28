@@ -36,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -87,6 +88,7 @@ fun SettingsScreen(
     val accountEmail by syncViewModel.accountEmail.collectAsState()
     val signInError by syncViewModel.signInError.collectAsState()
     val lastSyncedAt by syncViewModel.lastSyncedAt.collectAsState()
+    val autoSyncEnabled by syncViewModel.autoSyncEnabled.collectAsState()
     val cleanDriveState by viewModel.cleanDriveState.collectAsState()
     val importStatus by viewModel.importStatus.collectAsState()
 
@@ -274,6 +276,28 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+
+            // ── 同步设置 ──
+            if (isSignedIn) {
+                HorizontalDivider()
+                SectionHeader(strings.syncSettingsTitle)
+                Text(
+                    strings.syncSettingsDescription,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                ) {
+                    Text(strings.autoSyncLabel, style = MaterialTheme.typography.bodyLarge)
+                    Switch(
+                        checked = autoSyncEnabled,
+                        onCheckedChange = { syncViewModel.toggleAutoSync() }
                     )
                 }
             }
