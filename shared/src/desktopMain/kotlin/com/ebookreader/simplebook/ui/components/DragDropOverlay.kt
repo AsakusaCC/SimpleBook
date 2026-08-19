@@ -32,7 +32,7 @@ import java.io.File
  * Desktop (JVM) actual: receives OS-level file drag-and-drop via Compose Multiplatform's
  * `Modifier.dragAndDropTarget` (available since CMP 1.7.0; this project targets 1.9.0).
  *
- * Only files with a supported extension (epub/txt) are forwarded to [onFilesDropped].
+ * Only files with a supported extension (epub/txt/pdf) are forwarded to [onFilesDropped].
  * While a supported drag hovers, a semi-transparent overlay with [dropHint] is shown.
  */
 @OptIn(ExperimentalComposeUiApi::class)
@@ -45,7 +45,7 @@ actual fun DragDropOverlay(
 ) {
     var isDragOver by remember { mutableStateOf(false) }
     val currentOnDrop by rememberUpdatedState(onFilesDropped)
-    val supportedExt = remember { setOf("epub", "txt") }
+    val supportedExt = remember { setOf("epub", "txt", "pdf") }
 
     val target = remember {
         object : DragAndDropTarget {
@@ -117,7 +117,7 @@ private fun extractSupportedFiles(
 }
 
 /**
- * Returns true if the drag carries at least one supported (epub/txt) file. Reading transfer
+ * Returns true if the drag carries at least one supported (epub/txt/pdf) file. Reading transfer
  * data during drag-enter can occasionally throw on some platforms, so failures are treated
  * as "no supported files".
  */

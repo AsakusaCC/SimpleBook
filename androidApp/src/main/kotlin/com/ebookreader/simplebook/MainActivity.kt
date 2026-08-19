@@ -189,7 +189,7 @@ class MainActivity : ComponentActivity() {
                                     req.toIntent()?.let { googleSignInLauncher.launch(it) }
                                 },
                                 onImportClick = {
-                                    importLauncher.launch(arrayOf("application/epub+zip", "text/plain"))
+                                    importLauncher.launch(arrayOf("application/epub+zip", "text/plain", "application/pdf"))
                                 }
                             )
                         }
