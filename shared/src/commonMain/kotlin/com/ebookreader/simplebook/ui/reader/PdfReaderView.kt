@@ -2,19 +2,19 @@ package com.ebookreader.simplebook.ui.reader
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,14 +28,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.ebookreader.simplebook.data.parser.PdfPageLoader
 import com.ebookreader.simplebook.data.parser.coercePdfPage
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 /** PDF 阅读会话状态：页数、加载器、后台预扫出的每页宽高比（高/宽）。 */
@@ -47,7 +50,7 @@ data class PdfReaderState(
 
 /**
  * PDF 纵向连续滚动阅读视图。
- * - 适宽渲染（视口宽 × [QUALITY_SCALE]）+ 双击切换 2x 档（单页内横向滚动）；
+ * - 适宽渲染（视口宽 × [QUALITY_SCALE]）+ 双击切换 2x 档（每页默认居中，页内水平拖动）；
  * - 单击切换工具栏；当前页 = 首可见 item，经 [onPageChanged] 上报；
  * - [initialPage] 变化（TOC 跳页/进度恢复）时滚动到目标页。
  */
@@ -147,7 +150,9 @@ private fun PdfPageItem(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         val pageContent: @Composable (Modifier) -> Unit = { m ->
-            Box(m.aspectRatio(aspectRatio).background(Color.White)) {
+            // aspectRatio 参数是「高/宽」，而 Compose 的 aspectRatio modifier
+            // 接受「宽/高」，取倒数才是竖版页（否则盒型横放、内容被压到半宽）
+            Box(m.aspectRatio(1f / aspectRatio).background(Color.White)) {
                 when (val ps = pageState) {
                     is PageState.Ready -> Image(
                         bitmap = ps.bitmap,
@@ -168,12 +173,35 @@ private fun PdfPageItem(
             }
         }
         if (zoomed) {
-            // 2x 档：页面宽于视口，单页内横向滚动
-            Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+            // 2x 档：页面宽于视口，手动水平偏移（进入/回到本页时默认居中）。
+            // 不用 horizontalScroll：手动消费拖动事件，父级 detectTapGestures
+            // 就不会把拖动误判成单击/双击（修 mac 拖动误缩小）；水平主导的
+            // 拖动才被消费，纵向拖动留给 LazyColumn 换页（安卓跨页体验）
+            val pageWidthPx = viewportWidthPx * 2f
+            val maxOffset = (pageWidthPx - viewportWidthPx).coerceAtLeast(0f)
+            var hOffset by remember(viewportWidthPx) {
+                mutableStateOf(((pageWidthPx - viewportWidthPx) / 2f).coerceIn(0f, maxOffset))
+            }
+            LaunchedEffect(zoomed, viewportWidthPx) {
+                hOffset = ((pageWidthPx - viewportWidthPx) / 2f).coerceIn(0f, maxOffset)
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clipToBounds()
+                    .pointerInput(zoomed, viewportWidthPx) {
+                        detectHorizontalDragGestures { change, dragAmount ->
+                            change.consume()
+                            hOffset = (hOffset - dragAmount).coerceIn(0f, maxOffset)
+                        }
+                    }
+            ) {
                 pageContent(
-                    Modifier.requiredWidth(
-                        with(LocalDensity.current) { (viewportWidthPx * 2f).toDp() }
-                    )
+                    Modifier
+                        .requiredWidth(
+                            with(LocalDensity.current) { pageWidthPx.toDp() }
+                        )
+                        .offset { IntOffset((-hOffset).roundToInt(), 0) }
                 )
             }
         } else {
