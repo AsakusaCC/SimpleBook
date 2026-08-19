@@ -1545,7 +1545,6 @@ import com.ebookreader.simplebook.domain.model.BookFormat
 ```
 
 （即把原 `when (currentChapter?.type) { ... }` 整体变为上述 `if/else when` 结构，else 分支内容与现有代码逐字相同。）
-```
 
 5. 底栏章节标题 Text 替换为格式感知（`text = currentChapter?.title ?: ""` 处）：
 
