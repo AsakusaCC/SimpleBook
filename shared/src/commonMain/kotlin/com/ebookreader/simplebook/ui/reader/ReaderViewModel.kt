@@ -5,7 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ebookreader.simplebook.data.local.SettingsDataStore
 import com.ebookreader.simplebook.data.parser.EpubParser
+import com.ebookreader.simplebook.data.parser.PdfPageCache
+import com.ebookreader.simplebook.data.parser.PdfPageLoader
 import com.ebookreader.simplebook.data.parser.TxtParser
+import com.ebookreader.simplebook.data.parser.coercePdfPage
+import com.ebookreader.simplebook.data.parser.openPdf
+import com.ebookreader.simplebook.data.parser.pdfOverallPercentage
 import com.ebookreader.simplebook.domain.model.Book
 import com.ebookreader.simplebook.domain.model.BookFormat
 import com.ebookreader.simplebook.domain.model.Bookmark
@@ -18,6 +23,7 @@ import com.ebookreader.simplebook.domain.service.BookService
 import com.ebookreader.simplebook.domain.service.BookmarkService
 import com.ebookreader.simplebook.domain.service.NoteService
 import com.ebookreader.simplebook.domain.service.ReadingService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +33,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URLDecoder
 
@@ -85,6 +92,9 @@ class ReaderViewModel(
     private val _notes = MutableStateFlow<List<Note>>(emptyList())
     val notes: StateFlow<List<Note>> = _notes.asStateFlow()
 
+    private val _pdfState = MutableStateFlow<PdfReaderState?>(null)
+    val pdfState: StateFlow<PdfReaderState?> = _pdfState.asStateFlow()
+
     private var epubBookRef: nl.siegmann.epublib.domain.Book? = null
     private var saveJob: Job? = null
 
@@ -121,21 +131,26 @@ class ReaderViewModel(
             when (book.format) {
                 BookFormat.EPUB -> loadEpubChapters(book)
                 BookFormat.TXT -> loadTxtChapters(book)
-                BookFormat.PDF -> {
-                    // PDF rendering will be implemented separately
-                    _chapters.value = emptyList()
-                }
+                BookFormat.PDF -> loadPdf(book)
             }
 
             readingService.loadProgress(bookUuid)?.let { progress ->
-                _currentChapterIndex.value = progress.chapterIndex
-                _scrollPercentage.value = if (progress.charOffset > 0) {
-                    (progress.charOffset / 10000.0).toFloat().coerceIn(0f, 1f)
+                val isPdf = book.format == BookFormat.PDF
+                val pdfTotal = _pdfState.value?.pageCount ?: 0
+                _currentChapterIndex.value = if (isPdf) {
+                    coercePdfPage(progress.chapterIndex, pdfTotal)
                 } else {
-                    val totalChapters = _chapters.value.size
-                    if (totalChapters > 0) {
-                        ((progress.percentage * totalChapters) - progress.chapterIndex).toFloat().coerceIn(0f, 1f)
-                    } else 0f
+                    progress.chapterIndex
+                }
+                _scrollPercentage.value = when {
+                    isPdf -> pdfOverallPercentage(_currentChapterIndex.value, pdfTotal).toFloat()
+                    progress.charOffset > 0 -> (progress.charOffset / 10000.0).toFloat().coerceIn(0f, 1f)
+                    else -> {
+                        val totalChapters = _chapters.value.size
+                        if (totalChapters > 0) {
+                            ((progress.percentage * totalChapters) - progress.chapterIndex).toFloat().coerceIn(0f, 1f)
+                        } else 0f
+                    }
                 }
             }
 
@@ -287,12 +302,37 @@ class ReaderViewModel(
         }
     }
 
+    private suspend fun loadPdf(book: Book) {
+        val doc = withContext(Dispatchers.IO) { openPdf(File(book.filePath)) }
+        if (doc == null || doc.pageCount <= 0) {
+            runCatching { doc?.close() }
+            println("ReaderViewModel: failed to parse PDF (corrupt/encrypted?): ${book.filePath}")
+            _loadError.value = "无法打开此书：文件可能已加密或损坏"
+            return
+        }
+        val loader = PdfPageLoader(doc, PdfPageCache(), bookUuid)
+        _pdfState.value = PdfReaderState(pageCount = doc.pageCount, loader = loader)
+        _tocEntries.value = (0 until doc.pageCount).map {
+            TocEntry(title = "第 ${it + 1} 页", chapterIndex = it)
+        }
+        // 后台预扫每页宽高比（未渲染仅读尺寸），供占位比例使用
+        viewModelScope.launch(Dispatchers.IO) {
+            val ratios = (0 until doc.pageCount).map { loader.aspectRatio(it) }
+            _pdfState.value = _pdfState.value?.copy(aspectRatios = ratios)
+        }
+    }
+
     fun toggleToolbar() {
         _isToolbarVisible.value = !_isToolbarVisible.value
     }
 
     fun goToChapter(index: Int) {
-        if (index in _chapters.value.indices) {
+        val inBounds = if (_book.value?.format == BookFormat.PDF) {
+            index in 0 until (_pdfState.value?.pageCount ?: 0)
+        } else {
+            index in _chapters.value.indices
+        }
+        if (inBounds) {
             saveCurrentProgress()
             _currentChapterIndex.value = index
             _scrollPercentage.value = 0f
@@ -308,6 +348,12 @@ class ReaderViewModel(
         debounceSaveProgress()
     }
 
+    fun onPageChanged(page: Int) {
+        _currentChapterIndex.value = page
+        _scrollPercentage.value = pdfOverallPercentage(page, _pdfState.value?.pageCount ?: 0).toFloat()
+        debounceSaveProgress()
+    }
+
     private fun refreshBookmarkStatus() {
         viewModelScope.launch {
             _isBookmarked.value = bookmarkService.isBookmarked(bookUuid, _currentChapterIndex.value)
@@ -320,7 +366,11 @@ class ReaderViewModel(
                 bookmarkService.deleteBookmarkForPosition(bookUuid, _currentChapterIndex.value)
                 _isBookmarked.value = false
             } else {
-                val chapterTitle = _chapters.value.getOrNull(_currentChapterIndex.value)?.title ?: ""
+                val chapterTitle = if (_book.value?.format == BookFormat.PDF) {
+                    "第 ${_currentChapterIndex.value + 1} 页"
+                } else {
+                    _chapters.value.getOrNull(_currentChapterIndex.value)?.title ?: ""
+                }
                 bookmarkService.addBookmark(bookUuid, _currentChapterIndex.value, 0, chapterTitle)
                 _isBookmarked.value = true
             }
@@ -357,16 +407,24 @@ class ReaderViewModel(
 
     private fun saveCurrentProgress() {
         viewModelScope.launch {
-            val totalChapters = _chapters.value.size
+            val isPdf = _book.value?.format == BookFormat.PDF
+            val pdfTotal = _pdfState.value?.pageCount ?: 0
             val chapterPct = _scrollPercentage.value.toDouble().coerceIn(0.0, 1.0)
-            val overallPct = if (totalChapters > 0) {
-                ((_currentChapterIndex.value + chapterPct) / totalChapters).coerceIn(0.0, 1.0)
-            } else 0.0
+
+            val overallPct = when {
+                isPdf -> pdfOverallPercentage(_currentChapterIndex.value, pdfTotal)
+                else -> {
+                    val totalChapters = _chapters.value.size
+                    if (totalChapters > 0) {
+                        ((_currentChapterIndex.value + chapterPct) / totalChapters).coerceIn(0.0, 1.0)
+                    } else 0.0
+                }
+            }
 
             readingService.saveProgress(
                 bookUuid = bookUuid,
                 chapterIndex = _currentChapterIndex.value,
-                charOffset = (chapterPct * 10000).toLong(),
+                charOffset = if (isPdf) 0L else (chapterPct * 10000).toLong(),
                 percentage = overallPct
             )
         }
@@ -374,6 +432,7 @@ class ReaderViewModel(
 
     override fun onCleared() {
         saveJob?.cancel()
+        _pdfState.value?.loader?.close()
         // Save progress immediately when leaving reader
         runBlocking { saveCurrentProgress() }
         super.onCleared()
