@@ -100,4 +100,35 @@ class DesktopPdfTest {
             pdf.delete()
         }
     }
+
+    @Test
+    fun writePdfCoverCreatesPngFile() {
+        val pdf = File.createTempFile("cover-src", ".pdf")
+        writeMinimalPdf(pdf)
+        val coversDir = File(createTempDir(), "covers")
+        try {
+            val cover = writePdfCover(pdf, coversDir)
+            assertTrue(cover != null && cover.exists())
+            assertEquals("png", cover!!.extension)
+            // PNG 魔数 89 50 4E 47
+            val head = cover.readBytes().copyOfRange(0, 4)
+            assertTrue(head[0] == 0x89.toByte() && head[1] == 0x50.toByte() &&
+                head[2] == 0x4E.toByte() && head[3] == 0x47.toByte())
+        } finally {
+            pdf.delete()
+            coversDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun writePdfCoverReturnsNullForGarbageFile() {
+        val garbage = File.createTempFile("garbage-cover", ".pdf").apply { writeBytes(ByteArray(10)) }
+        val coversDir = File(createTempDir(), "covers")
+        try {
+            assertNull(writePdfCover(garbage, coversDir))
+        } finally {
+            garbage.delete()
+            coversDir.deleteRecursively()
+        }
+    }
 }

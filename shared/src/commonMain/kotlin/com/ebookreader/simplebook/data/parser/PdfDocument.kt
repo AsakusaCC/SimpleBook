@@ -28,3 +28,22 @@ expect fun openPdf(file: File): PdfDocument?
 
 /** 编码为 PNG 字节；失败返回 null。用于封面落盘。 */
 expect fun ImageBitmap.encodeToPngBytes(): ByteArray?
+
+/** 封面渲染宽度（px），书架卡片足够清晰即可。 */
+private const val PDF_COVER_WIDTH_PX = 600
+
+/**
+ * 渲染 PDF 第 1 页为封面 PNG 存入 [coversDir]（文件名时间戳，避免覆盖）。
+ * 失败返回 null；阻塞 IO，调用方负责后台线程调度。
+ */
+fun writePdfCover(pdfFile: File, coversDir: File): File? = runCatching {
+    openPdf(pdfFile)?.use { doc ->
+        if (doc.pageCount <= 0) return null
+        val bitmap = doc.renderPage(0, PDF_COVER_WIDTH_PX)
+        val bytes = bitmap.encodeToPngBytes() ?: return null
+        coversDir.mkdirs()
+        val outFile = File(coversDir, "${System.currentTimeMillis()}.png")
+        outFile.writeBytes(bytes)
+        outFile
+    }
+}.getOrNull()
