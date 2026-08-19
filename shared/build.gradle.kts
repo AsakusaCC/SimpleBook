@@ -123,6 +123,9 @@ kotlin {
 
                 // Compose Desktop specific
                 implementation(compose.desktop.currentOs)
+
+                // PDF 渲染（Desktop JVM）——纯 Java；Android 端用系统 PdfRenderer，见 androidMain
+                implementation("org.apache.pdfbox:pdfbox:3.0.5")
             }
         }
 
