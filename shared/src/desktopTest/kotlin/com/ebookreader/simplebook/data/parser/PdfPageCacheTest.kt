@@ -1,10 +1,12 @@
 package com.ebookreader.simplebook.data.parser
 
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.geometry.Size
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertNotNull
 
 class ByteBudgetLruCacheTest {
 
@@ -79,5 +81,100 @@ class ByteBudgetLruCacheTest {
         assertNull(c.get("book2", 0, 800))
         assertNull(c.get("book1", 1, 800))
         assertNull(c.get("book1", 0, 928))
+    }
+}
+
+class PdfPageLoaderTest {
+
+    private class FakePdfDocument(
+        override val pageCount: Int = 3,
+        private val failAfterClose: Boolean = true
+    ) : PdfDocument {
+        val rendered = mutableListOf<Pair<Int, Int>>()
+        var closed = false
+
+        override fun pageSizePts(index: Int): Size = Size(595f, 842f)
+
+        override fun renderPage(index: Int, widthPx: Int): ImageBitmap {
+            if (failAfterClose && closed) throw IllegalStateException("document closed")
+            rendered += index to widthPx
+            return ImageBitmap(widthPx, 10)
+        }
+
+        override fun close() { closed = true }
+    }
+
+    private fun loader(doc: FakePdfDocument) =
+        PdfPageLoader(doc, PdfPageCache(maxBytes = 10_000_000), "book-1")
+
+    @Test
+    fun loadRendersOnceThenCacheHits() {
+        val doc = FakePdfDocument()
+        val l = loader(doc)
+        kotlinx.coroutines.runBlocking {
+            val b1 = l.load(0, 800)
+            val b2 = l.load(0, 810) // 810 与 800 落在同一 128px 桶 → 缓存命中
+            assertEquals(b1, b2)
+        }
+        assertEquals(1, doc.rendered.size)
+    }
+
+    @Test
+    fun differentWidthBucketRendersAgain() {
+        val doc = FakePdfDocument()
+        val l = loader(doc)
+        kotlinx.coroutines.runBlocking {
+            l.load(0, 800)
+            l.load(0, 928) // 不同桶 → 重新渲染
+        }
+        assertEquals(2, doc.rendered.size)
+        assertEquals(896, doc.rendered[0].second) // 800 → 桶化到 896（128 的倍数 ≥ 800）
+    }
+
+    @Test
+    fun outOfRangePageReturnsNull() {
+        val l = loader(FakePdfDocument(pageCount = 3))
+        kotlinx.coroutines.runBlocking {
+            assertNull(l.load(5, 800))
+            assertNull(l.load(-1, 800))
+        }
+    }
+
+    @Test
+    fun loadAfterCloseReturnsNull() {
+        val doc = FakePdfDocument()
+        val l = loader(doc)
+        kotlinx.coroutines.runBlocking {
+            assertNotNull(l.load(0, 800))
+            l.close()
+            assertNull(l.load(1, 800))
+        }
+    }
+
+    @Test
+    fun aspectRatioFallsBackOnBadDocument() {
+        val doc = object : PdfDocument {
+            override val pageCount = 1
+            override fun pageSizePts(index: Int): Size = throw IllegalStateException("broken")
+            override fun renderPage(index: Int, widthPx: Int): ImageBitmap = ImageBitmap(10, 10)
+            override fun close() {}
+        }
+        val l = PdfPageLoader(doc, PdfPageCache(), "b")
+        assertEquals(842f / 595f, l.aspectRatio(0), 0.001f)
+    }
+
+    @Test
+    fun overallPercentageUsesPageMidpoint() {
+        assertEquals(0.5 / 10.0, pdfOverallPercentage(0, 10), 1e-9)
+        assertEquals(9.5 / 10.0, pdfOverallPercentage(9, 10), 1e-9)
+        assertEquals(0.0, pdfOverallPercentage(0, 0))
+    }
+
+    @Test
+    fun coercePageClampsToValidRange() {
+        assertEquals(0, coercePdfPage(-3, 10))
+        assertEquals(9, coercePdfPage(99, 10))
+        assertEquals(5, coercePdfPage(5, 10))
+        assertEquals(0, coercePdfPage(5, 0))
     }
 }

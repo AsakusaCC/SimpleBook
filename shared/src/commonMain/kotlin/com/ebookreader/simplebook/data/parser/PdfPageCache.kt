@@ -1,6 +1,8 @@
 package com.ebookreader.simplebook.data.parser
 
 import androidx.compose.ui.graphics.ImageBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 字节预算 LRU 缓存。访问序淘汰；超出预算从最久未访问项开始逐出。
@@ -65,3 +67,51 @@ class PdfPageCache(maxBytes: Long = DEFAULT_MAX_BYTES) {
         const val DEFAULT_MAX_BYTES: Long = 64L * 1024 * 1024
     }
 }
+
+/**
+ * 每本书的页面加载门面：缓存 → IO 渲染 → 回填缓存。
+ * [load] 可安全地在任意线程/协程调用；单页渲染失败返回 null（UI 显示占位）。
+ */
+class PdfPageLoader(
+    private val document: PdfDocument,
+    private val cache: PdfPageCache,
+    private val bookUuid: String
+) : AutoCloseable {
+
+    suspend fun load(index: Int, widthPx: Int): ImageBitmap? {
+        if (index !in 0 until document.pageCount) return null
+        val bucket = bucketize(widthPx)
+        cache.get(bookUuid, index, bucket)?.let { return it }
+        val bitmap = runCatching {
+            withContext(Dispatchers.IO) { document.renderPage(index, bucket) }
+        }.getOrNull() ?: return null
+        cache.put(bookUuid, index, bucket, bitmap)
+        return bitmap
+    }
+
+    /** 页宽高比（高/宽）；文档异常时回退 A4 竖版比例。 */
+    fun aspectRatio(index: Int): Float = runCatching {
+        val size = document.pageSizePts(index)
+        if (size.width > 0f) size.height / size.width else DEFAULT_ASPECT_RATIO
+    }.getOrNull() ?: DEFAULT_ASPECT_RATIO
+
+    override fun close() {
+        runCatching { document.close() }
+    }
+
+    companion object {
+        /** A4 竖版（842/595），页面尺寸未知时的占位比例。 */
+        const val DEFAULT_ASPECT_RATIO = 842f / 595f
+
+        /** 宽度按 128px 桶量化，视口微变不致全量重渲染。 */
+        fun bucketize(widthPx: Int): Int = ((widthPx + 127) / 128) * 128
+    }
+}
+
+/** PDF 进度：当前页按页中点折算整体百分比。 */
+fun pdfOverallPercentage(page: Int, pageCount: Int): Double =
+    if (pageCount > 0) ((page + 0.5) / pageCount).coerceIn(0.0, 1.0) else 0.0
+
+/** 页码钳制到 [0, pageCount-1]；页数未知（0）返回 0。 */
+fun coercePdfPage(page: Int, pageCount: Int): Int =
+    if (pageCount > 0) page.coerceIn(0, pageCount - 1) else 0
