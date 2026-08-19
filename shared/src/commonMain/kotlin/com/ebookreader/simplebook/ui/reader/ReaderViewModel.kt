@@ -352,6 +352,7 @@ class ReaderViewModel(
         _currentChapterIndex.value = page
         _scrollPercentage.value = pdfOverallPercentage(page, _pdfState.value?.pageCount ?: 0).toFloat()
         debounceSaveProgress()
+        refreshBookmarkStatus()
     }
 
     private fun refreshBookmarkStatus() {

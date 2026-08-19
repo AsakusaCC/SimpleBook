@@ -79,7 +79,9 @@ class PdfPageLoader(
 ) : AutoCloseable {
 
     suspend fun load(index: Int, widthPx: Int): ImageBitmap? {
-        if (index !in 0 until document.pageCount) return null
+        // close 后 pageCount 可能抛异常，兜底为越界 → null
+        val inBounds = runCatching { index in 0 until document.pageCount }.getOrDefault(false)
+        if (!inBounds) return null
         val bucket = bucketize(widthPx)
         cache.get(bookUuid, index, bucket)?.let { return it }
         val bitmap = runCatching {

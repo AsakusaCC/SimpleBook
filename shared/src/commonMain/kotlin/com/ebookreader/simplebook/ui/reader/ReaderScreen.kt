@@ -371,7 +371,11 @@ private fun ReaderPane(
                         )
                         IconButton(
                             onClick = onNextChapter,
-                            enabled = currentChapterIndex < chapters.size - 1
+                            enabled = if (bookFormat == BookFormat.PDF) {
+                                currentChapterIndex < (pdfState?.pageCount ?: 0) - 1
+                            } else {
+                                currentChapterIndex < chapters.size - 1
+                            }
                         ) {
                             Icon(Icons.AutoMirrored.Filled.MenuBook, "Next")
                         }

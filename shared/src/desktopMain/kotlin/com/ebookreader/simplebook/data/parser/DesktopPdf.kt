@@ -21,23 +21,28 @@ actual fun openPdf(file: File): PdfDocument? = try {
 private class DesktopPdfDocument(private val doc: PDDocument) : PdfDocument {
     private val renderer = PDFRenderer(doc)
 
-    override val pageCount: Int get() = doc.numberOfPages
+    override val pageCount: Int get() = synchronized(doc) { doc.numberOfPages }
 
-    override fun pageSizePts(index: Int): Size {
-        val box = doc.getPage(index).mediaBox
-        return Size(box.width, box.height)
+    override fun pageSizePts(index: Int): Size = synchronized(doc) {
+        val box = doc.getPage(index).cropBox
+        Size(box.width, box.height)
     }
 
     override fun renderPage(index: Int, widthPx: Int): ImageBitmap = synchronized(doc) {
         val page = doc.getPage(index)
-        val pageWidth = page.mediaBox.width.coerceAtLeast(1f)
-        val ratio = page.mediaBox.height / pageWidth
+        val pageWidth = page.cropBox.width.coerceAtLeast(1f)
+        val ratio = page.cropBox.height / pageWidth
         val height = (widthPx * ratio).roundToInt().coerceAtLeast(1)
         val scale = widthPx / pageWidth
         // Render into BufferedImage of exact size to match test expectation
         val awtImage = renderer.renderImage(index, scale, ImageType.RGB)
         val target = java.awt.image.BufferedImage(widthPx, height, java.awt.image.BufferedImage.TYPE_INT_RGB)
-        target.graphics.drawImage(awtImage, 0, 0, widthPx, height, null)
+        val g = target.graphics
+        try {
+            g.drawImage(awtImage, 0, 0, widthPx, height, null)
+        } finally {
+            g.dispose()
+        }
         target.toComposeImageBitmap()
     }
 

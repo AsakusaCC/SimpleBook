@@ -983,7 +983,8 @@ class SyncService(
         val filesInFolder = driveClient.listFilesInFolder(folderId)
         logD(TAG, "downloadBookFromRemote: files in folder: ${filesInFolder.map { it.name }}")
         val bookFileEntry = filesInFolder.firstOrNull { fi ->
-            !fi.name.startsWith("metadata") && (fi.name.endsWith(".epub") || fi.name.endsWith(".txt"))
+            !fi.name.startsWith("metadata") &&
+                (fi.name.endsWith(".epub") || fi.name.endsWith(".txt") || fi.name.endsWith(".pdf"))
         }
         if (bookFileEntry == null) {
             logW(TAG, "downloadBookFromRemote: no book file found in folder $folderName")
@@ -994,6 +995,7 @@ class SyncService(
         val format = when (extension) {
             "epub" -> BookFormat.EPUB
             "txt" -> BookFormat.TXT
+            "pdf" -> BookFormat.PDF
             else -> {
                 logW(TAG, "downloadBookFromRemote: unsupported format: $extension")
                 return
@@ -1011,15 +1013,17 @@ class SyncService(
         }
         logD(TAG, "downloadBookFromRemote: downloaded file ${localFile.absolutePath}, size=${localFile.length()}")
 
-        // 3. Extract cover image from EPUB
-        val coverPath = if (format == BookFormat.EPUB) {
-            try {
+        // 3. Extract cover image (EPUB: parse cover; PDF: render first page)
+        val coverPath = when (format) {
+            BookFormat.EPUB -> try {
                 epubParser.parse(localFile)?.coverPath
             } catch (e: Exception) {
                 logW(TAG, "downloadBookFromRemote: failed to extract cover", e)
                 null
             }
-        } else null
+            BookFormat.PDF -> writePdfCover(localFile, File(getBooksDir(), "covers"))?.absolutePath
+            else -> null
+        }
 
         // 4. Create book record via repository using remote uuid
         val book = Book(
@@ -1134,8 +1138,8 @@ class SyncService(
             val files = driveClient.listUserFiles(importFolderId)
             logD(TAG, "importFromDriveFolder: found ${files.size} files in Import folder")
 
-            // 3. Filter epub/txt files
-            val supportedExtensions = setOf("epub", "txt")
+            // 3. Filter epub/txt/pdf files
+            val supportedExtensions = setOf("epub", "txt", "pdf")
             val bookFiles = files.filter { file ->
                 val ext = file.name.substringAfterLast('.', "").lowercase()
                 ext in supportedExtensions
@@ -1164,6 +1168,7 @@ class SyncService(
                     val format = when (extension) {
                         "epub" -> BookFormat.EPUB
                         "txt" -> BookFormat.TXT
+                        "pdf" -> BookFormat.PDF
                         else -> continue
                     }
 
