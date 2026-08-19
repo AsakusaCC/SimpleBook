@@ -2,10 +2,15 @@ package com.ebookreader.simplebook.domain.service
 
 import com.ebookreader.simplebook.data.parser.EpubParser
 import com.ebookreader.simplebook.data.parser.TxtParser
+import com.ebookreader.simplebook.data.parser.openPdf
+import com.ebookreader.simplebook.data.parser.writePdfCover
 import com.ebookreader.simplebook.data.repository.BookRepository
 import com.ebookreader.simplebook.domain.model.Book
 import com.ebookreader.simplebook.domain.model.BookFormat
+import com.ebookreader.simplebook.platform.getBooksDir
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class BookService constructor(
@@ -23,6 +28,7 @@ class BookService constructor(
         val format = when (file.extension.lowercase()) {
             "epub" -> BookFormat.EPUB
             "txt" -> BookFormat.TXT
+            "pdf" -> BookFormat.PDF
             else -> throw IllegalArgumentException("Unsupported format: ${file.extension}")
         }
 
@@ -42,6 +48,19 @@ class BookService constructor(
                 val result = txtParser.parse(file)
                 title = originalName
                 author = result.author
+            }
+            BookFormat.PDF -> {
+                val pageCount = withContext(Dispatchers.IO) {
+                    openPdf(file)?.use { it.pageCount } ?: -1
+                }
+                if (pageCount <= 0) {
+                    throw IllegalArgumentException("无法解析 PDF，文件可能已损坏或已加密: ${file.name}")
+                }
+                title = originalName
+                author = ""
+                coverPath = withContext(Dispatchers.IO) {
+                    writePdfCover(file, File(getBooksDir(), "covers"))
+                }?.absolutePath
             }
         }
 

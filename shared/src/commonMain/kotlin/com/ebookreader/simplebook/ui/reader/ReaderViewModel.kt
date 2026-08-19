@@ -121,6 +121,10 @@ class ReaderViewModel(
             when (book.format) {
                 BookFormat.EPUB -> loadEpubChapters(book)
                 BookFormat.TXT -> loadTxtChapters(book)
+                BookFormat.PDF -> {
+                    // PDF rendering will be implemented separately
+                    _chapters.value = emptyList()
+                }
             }
 
             readingService.loadProgress(bookUuid)?.let { progress ->

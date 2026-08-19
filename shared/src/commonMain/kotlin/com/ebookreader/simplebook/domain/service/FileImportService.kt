@@ -43,6 +43,6 @@ class FileImportService(private val bookService: BookService) {
     }
 
     companion object {
-        private val SUPPORTED_EXTENSIONS = setOf("epub", "txt")
+        private val SUPPORTED_EXTENSIONS = setOf("epub", "txt", "pdf")
     }
 }

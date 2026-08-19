@@ -3,6 +3,8 @@ package com.ebookreader.simplebook.domain.service
 import com.ebookreader.simplebook.data.local.dao.SyncLogDao
 import com.ebookreader.simplebook.data.parser.EpubParser
 import com.ebookreader.simplebook.data.parser.TxtParser
+import com.ebookreader.simplebook.data.parser.openPdf
+import com.ebookreader.simplebook.data.parser.writePdfCover
 import com.ebookreader.simplebook.data.local.entity.SyncLogEntity
 import com.ebookreader.simplebook.data.remote.BookMetadata
 import com.ebookreader.simplebook.data.remote.BookmarkMetadata
@@ -171,6 +173,7 @@ class SyncService(
                     val mimeType = when (currentBook.format) {
                         BookFormat.EPUB -> "application/epub+zip"
                         BookFormat.TXT -> "text/plain"
+                        BookFormat.PDF -> "application/pdf"
                     }
                     val fileId = driveClient.uploadBookFile(bookFolderId, fileName, localFile, mimeType)
                     if (fileId != null) {
@@ -1191,6 +1194,13 @@ class SyncService(
                             val result = txtParser.parse(localFile)
                             title = originalName
                             author = result.author
+                        }
+                        BookFormat.PDF -> {
+                            val pageCount = openPdf(localFile)?.use { it.pageCount } ?: -1
+                            if (pageCount <= 0) continue
+                            title = originalName
+                            author = ""
+                            coverPath = writePdfCover(localFile, File(getBooksDir(), "covers"))?.absolutePath
                         }
                     }
 
