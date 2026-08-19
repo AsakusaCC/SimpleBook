@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
+import com.ebookreader.simplebook.domain.model.BookFormat
 import com.ebookreader.simplebook.domain.model.Chapter
 import com.ebookreader.simplebook.domain.model.ChapterType
 import com.ebookreader.simplebook.domain.model.AppStrings
@@ -166,6 +167,9 @@ fun ReaderScreen(
             tocEntries = tocEntries,
             navController = navController,
             settings = settings,
+            bookFormat = book?.format,
+            pdfState = viewModel.pdfState.collectAsState().value,
+            onPageChanged = viewModel::onPageChanged,
             strings = strings,
             isExpanded = isExpanded,
             isSidePanelVisible = isSidePanelVisible,
@@ -202,6 +206,9 @@ private fun ReaderPane(
     tocEntries: List<TocEntry>,
     navController: NavController?,
     settings: ReaderSettings,
+    bookFormat: BookFormat?,
+    pdfState: PdfReaderState?,
+    onPageChanged: (Int) -> Unit,
     strings: AppStrings,
     isExpanded: Boolean,
     isSidePanelVisible: Boolean,
@@ -231,7 +238,20 @@ private fun ReaderPane(
                 color = Color(settings.textColor)
             )
 
-            when (currentChapter?.type) {
+            if (bookFormat == BookFormat.PDF && pdfState != null) {
+                PdfReaderView(
+                    state = pdfState,
+                    initialPage = currentChapterIndex,
+                    pageLabel = strings.pageLabel,
+                    pageLoadFailedText = strings.pageLoadFailed,
+                    onPageChanged = onPageChanged,
+                    onTap = onToggleToolbar,
+                    backgroundColor = settings.backgroundColor,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(settings.backgroundColor))
+                )
+            } else when (currentChapter?.type) {
                 ChapterType.EPUB_HTML -> {
                     EpubReaderView(
                         htmlContent = currentChapter.content,
@@ -325,7 +345,11 @@ private fun ReaderPane(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = currentChapter?.title ?: "",
+                        text = if (bookFormat == BookFormat.PDF) {
+                            strings.pageLabel(currentChapterIndex + 1)
+                        } else {
+                            currentChapter?.title ?: ""
+                        },
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
@@ -353,7 +377,11 @@ private fun ReaderPane(
                         }
                     }
                     Text(
-                        text = strings.chapterOf(currentChapterIndex + 1, chapters.size),
+                        text = when {
+                            bookFormat == BookFormat.PDF && pdfState != null ->
+                                strings.pageOf(currentChapterIndex + 1, pdfState.pageCount)
+                            else -> strings.chapterOf(currentChapterIndex + 1, chapters.size)
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(top = 4.dp)
                     )

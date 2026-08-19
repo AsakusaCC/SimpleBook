@@ -42,6 +42,9 @@ data class AppStrings(
     val delete: String,
     val deleteMessage: (bookTitle: String) -> String,
     val chapterOf: (current: Int, total: Int) -> String,
+    val pageOf: (current: Int, total: Int) -> String,
+    val pageLabel: (page: Int) -> String,
+    val pageLoadFailed: String,
     // Sync
     val syncTitle: String,
     val syncSignIn: String,
@@ -139,6 +142,9 @@ fun getStrings(language: String): AppStrings = when (language) {
         delete = "Delete",
         deleteMessage = { title -> "Are you sure you want to delete \"$title\"?" },
         chapterOf = { current, total -> "Chapter $current of $total" },
+        pageOf = { current, total -> "Page $current of $total" },
+        pageLabel = { page -> "Page $page" },
+        pageLoadFailed = "Failed to load this page",
         // Sync
         syncTitle = "Google Drive Sync",
         syncSignIn = "Sign in with Google Drive",
@@ -230,6 +236,9 @@ fun getStrings(language: String): AppStrings = when (language) {
         delete = "删除",
         deleteMessage = { title -> "确认删除「$title」吗？" },
         chapterOf = { current, total -> "第 $current 章 / 共 $total 章" },
+        pageOf = { current, total -> "第 $current 页 / 共 $total 页" },
+        pageLabel = { page -> "第 $page 页" },
+        pageLoadFailed = "页面加载失败",
         // Sync
         syncTitle = "Google Drive 同步",
         syncSignIn = "登录 Google Drive",
