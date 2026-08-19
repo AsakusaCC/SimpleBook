@@ -1116,22 +1116,22 @@ fun PdfReaderView(
     var zoomed by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
-    // 响应初始页恢复与外部跳页（TOC/书签/笔记）
-    LaunchedEffect(listState, state) {
-        snapshotFlow { initialPage }
-            .distinctUntilChanged()
-            .collect { page ->
-                if (page != listState.firstVisibleItemIndex) {
-                    listState.scrollToItem(coercePdfPage(page, state.pageCount))
-                }
-            }
+    // 响应初始页恢复与外部跳页（TOC/书签/笔记）。
+    // 注意：不能用 snapshotFlow 观察普通参数 initialPage（非 snapshot state，
+    // 只在启动时发射一次）；把 initialPage 放进 effect key，参数变化重启 effect
+    // 触发滚动（与 EpubReaderView 的 LaunchedEffect(blocks) 恢复模式一致）。
+    LaunchedEffect(listState, state, initialPage) {
+        val target = coercePdfPage(initialPage, state.pageCount)
+        if (target != listState.firstVisibleItemIndex) {
+            listState.scrollToItem(target)
+        }
     }
 
-    // 当前页上报（首可见 item）
+    // 当前页上报（首可见 item）；coercePdfPage 兜底 pageCount 为 0 的空区间
     LaunchedEffect(listState, state.pageCount) {
         snapshotFlow { listState.firstVisibleItemIndex }
             .distinctUntilChanged()
-            .collect { page -> onPageChanged(page.coerceIn(0, state.pageCount - 1)) }
+            .collect { page -> onPageChanged(coercePdfPage(page, state.pageCount)) }
     }
 
     BoxWithConstraints(modifier = modifier.background(Color(backgroundColor))) {
