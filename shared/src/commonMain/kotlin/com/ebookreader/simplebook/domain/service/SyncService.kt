@@ -1034,6 +1034,9 @@ class SyncService(
             format = format,
             coverPath = coverPath,
             fileSize = localFile.length(),
+            // 沿用远端书的真实更新时刻，否则落到默认 now()，会让后到的删除
+            // tombstone（updatedAt 更小）在 LWW 比较中输掉，导致已删的书复活
+            updatedAt = metadata.updatedAt,
             lastSyncedAt = System.currentTimeMillis(),
             folderId = metadata.folderId,
             driveFileId = folderId

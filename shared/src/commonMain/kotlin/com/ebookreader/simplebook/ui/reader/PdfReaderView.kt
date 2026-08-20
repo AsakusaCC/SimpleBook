@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ import com.ebookreader.simplebook.data.parser.PdfPageLoader
 import com.ebookreader.simplebook.data.parser.coercePdfPage
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 /** PDF 阅读会话状态：页数、加载器、后台预扫出的每页宽高比（高/宽）。 */
 data class PdfReaderState(
@@ -67,6 +69,7 @@ fun PdfReaderView(
 ) {
     var zoomed by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     // 响应初始页恢复与外部跳页（TOC/书签/笔记）。
     // 注意：不能用 snapshotFlow 观察普通参数 initialPage（非 snapshot state，
@@ -99,7 +102,12 @@ fun PdfReaderView(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { onTap() },
-                        onDoubleTap = { zoomed = !zoomed }
+                        onDoubleTap = {
+                            zoomed = !zoomed
+                            // item 高度在两档间变化（zoomed 页高 = 适宽 2 倍），
+                            // 锚定当前页顶部，避免列表锚点错乱导致视口跳动
+                            scope.launch { listState.scrollToItem(listState.firstVisibleItemIndex) }
+                        }
                     )
                 }
         ) {
