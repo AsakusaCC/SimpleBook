@@ -10,9 +10,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,14 +31,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.ebookreader.simplebook.data.parser.PdfPageLoader
 import com.ebookreader.simplebook.data.parser.coercePdfPage
-import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -181,21 +180,19 @@ private fun PdfPageItem(
             }
         }
         if (zoomed) {
-            // 2x 档：页面宽于视口，手动水平偏移（进入/回到本页时默认居中）。
-            // 不用 horizontalScroll：手动消费拖动事件，父级 detectTapGestures
-            // 就不会把拖动误判成单击/双击（修 mac 拖动误缩小）；水平主导的
-            // 拖动才被消费，纵向拖动留给 LazyColumn 换页（安卓跨页体验）
-            val pageWidthPx = viewportWidthPx * 2f
-            val maxOffset = (pageWidthPx - viewportWidthPx).coerceAtLeast(0f)
-            var hOffset by remember(viewportWidthPx) {
-                mutableStateOf(((pageWidthPx - viewportWidthPx) / 2f).coerceIn(0f, maxOffset))
-            }
-            LaunchedEffect(zoomed, viewportWidthPx) {
-                hOffset = ((pageWidthPx - viewportWidthPx) / 2f).coerceIn(0f, maxOffset)
-            }
+            // 2x 档：内容盒布局尺寸与适宽完全一致（viewport 宽 × fit 高，无超宽
+            // 子元素），2× 放大与水平窗口全部放 graphicsLayer 绘制层——
+            // transformOrigin 左上、scale 2、translationX=-hOffset。视口盒高
+            // 2×fit（放大的整页高）并裁剪。布局层任何对齐/测量歧义都被绕开。
+            val density = LocalDensity.current
+            val fitHeightPx = viewportWidthPx * aspectRatio
+            val maxOffset = viewportWidthPx.coerceAtLeast(0f)
+            var hOffset by remember(viewportWidthPx) { mutableStateOf(maxOffset / 2f) }
+            LaunchedEffect(zoomed, viewportWidthPx) { hOffset = maxOffset / 2f }
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .requiredHeight(with(density) { (fitHeightPx * 2f).toDp() })
                     .clipToBounds()
                     .pointerInput(zoomed, viewportWidthPx) {
                         detectHorizontalDragGestures { change, dragAmount ->
@@ -204,13 +201,36 @@ private fun PdfPageItem(
                         }
                     }
             ) {
-                pageContent(
+                Box(
                     Modifier
-                        .requiredWidth(
-                            with(LocalDensity.current) { pageWidthPx.toDp() }
+                        .fillMaxWidth()
+                        .aspectRatio(1f / aspectRatio)
+                        .graphicsLayer {
+                            scaleX = 2f
+                            scaleY = 2f
+                            transformOrigin = TransformOrigin(0f, 0f)
+                            translationX = -hOffset
+                        }
+                        .background(Color.White)
+                ) {
+                    when (val ps = pageState) {
+                        is PageState.Ready -> Image(
+                            bitmap = ps.bitmap,
+                            contentDescription = pageLabel(index + 1),
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
                         )
-                        .offset { IntOffset((-hOffset).roundToInt(), 0) }
-                )
+                        PageState.Loading -> CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                        PageState.Failed -> Text(
+                            text = pageLoadFailedText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                }
             }
         } else {
             pageContent(Modifier.fillMaxWidth())
